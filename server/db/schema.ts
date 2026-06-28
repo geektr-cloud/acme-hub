@@ -97,3 +97,54 @@ export const certificates = sqliteTable(
 
 export type Certificate = typeof certificates.$inferSelect;
 export type NewCertificate = typeof certificates.$inferInsert;
+
+// DNS 凭据：用于操作 DNS API（签发证书时自动完成 DNS-01 验证）。
+export const dnsCredentials = sqliteTable("DnsCredential", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
+  name: text("name").notNull().default(""),
+  description: text("description").notNull().default(""),
+  // DNS 服务商标识，用作 creds 的判别字段。
+  provider: text("provider")
+    .notNull()
+    .default("cloudflare")
+    .$type<"cloudflare" | "alicloud">(),
+  // 凭据（敏感）。按 provider 形态不同：cloudflare = { apiToken }，alicloud = { accessKeyId, accessKeySecret }。null = 未填。
+  creds: text("creds", { mode: "json" }).$type<
+    | { apiToken: string }
+    | { accessKeyId: string; accessKeySecret: string }
+    | null
+  >(),
+  createdAt: text("createdAt").notNull().default(now),
+  updatedAt: text("updatedAt")
+    .notNull()
+    .default(now)
+    .$onUpdate(() => now),
+});
+
+export type DnsCredential = typeof dnsCredentials.$inferSelect;
+export type NewDnsCredential = typeof dnsCredentials.$inferInsert;
+
+// 域名：需要签发证书的域名，绑定 DNS 凭据以完成 DNS-01 验证。
+export const domains = sqliteTable(
+  "Domain",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    name: text("name").notNull().default(""),
+    description: text("description").notNull().default(""),
+    // 绑定的 DNS 凭据。null = 未绑定（暂不可用于签发）。不加外键约束，删除凭据时由应用层置空。
+    dnsCredentialId: text("dnsCredentialId"),
+    createdAt: text("createdAt").notNull().default(now),
+    updatedAt: text("updatedAt")
+      .notNull()
+      .default(now)
+      .$onUpdate(() => now),
+  },
+  (t) => [index("Domain_dnsCredentialId_idx").on(t.dnsCredentialId)],
+);
+
+export type Domain = typeof domains.$inferSelect;
+export type NewDomain = typeof domains.$inferInsert;

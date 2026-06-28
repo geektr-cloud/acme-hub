@@ -44,3 +44,7 @@ __screenshots__/
 !.dev.vars.example
 .env*
 !.env.example
+
+# architect mode files
+sa.md
+plan.md

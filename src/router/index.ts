@@ -6,6 +6,10 @@ import ClientPage from "../views/client/ClientPage.vue";
 import ClientDetailPage from "../views/client/ClientDetailPage.vue";
 import AcmeAccountPage from "../views/acme-account/AcmeAccountPage.vue";
 import AcmeAccountDetailPage from "../views/acme-account/AcmeAccountDetailPage.vue";
+import DnsCredentialPage from "../views/dns-credential/DnsCredentialPage.vue";
+import DnsCredentialDetailPage from "../views/dns-credential/DnsCredentialDetailPage.vue";
+import DomainPage from "../views/domain/DomainPage.vue";
+import DomainDetailPage from "../views/domain/DomainDetailPage.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,6 +53,26 @@ const router = createRouter({
       path: "/acme-accounts/:id",
       name: "acme-account-detail",
       component: AcmeAccountDetailPage,
+    },
+    {
+      path: "/dns-credentials",
+      name: "dns-credentials",
+      component: DnsCredentialPage,
+    },
+    {
+      path: "/dns-credentials/:id",
+      name: "dns-credential-detail",
+      component: DnsCredentialDetailPage,
+    },
+    {
+      path: "/domains",
+      name: "domains",
+      component: DomainPage,
+    },
+    {
+      path: "/domains/:id",
+      name: "domain-detail",
+      component: DomainDetailPage,
     },
   ],
 });

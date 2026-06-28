@@ -19,6 +19,8 @@ const isActive = (prefix: string) =>
 const clientsActive = isActive("/clients");
 const accountsActive = isActive("/acme-accounts");
 const certsActive = isActive("/certificates");
+const dnsCredentialsActive = isActive("/dns-credentials");
+const domainsActive = isActive("/domains");
 
 const onLogout = async () => {
   await auth.logout();
@@ -48,6 +50,15 @@ const onLogout = async () => {
         </RouterLink>
         <RouterLink to="/certificates" :class="navLinkClass(certsActive)">
           证书
+        </RouterLink>
+        <RouterLink
+          to="/dns-credentials"
+          :class="navLinkClass(dnsCredentialsActive)"
+        >
+          DNS 凭据
+        </RouterLink>
+        <RouterLink to="/domains" :class="navLinkClass(domainsActive)">
+          域名
         </RouterLink>
       </nav>
       <div class="ml-auto">

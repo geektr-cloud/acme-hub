@@ -8,6 +8,7 @@ ACME 证书管理中枢。Cloudflare Worker 单体应用，Vue 3 SPA + Hono JSON
 
 - 管理 ACME 账户（Let's Encrypt / ZeroSSL / Google / 自定义 CA），凭据缺失时自动生成 ECDSA 密钥对并向 CA 注册账户。
 - 管理证书与客户端实体（DNS-01 签发流程基于 [`@geektr/acme-dns01`](https://www.npmjs.com/package/@geektr/acme-dns01)）。
+- 管理 DNS 凭据（Cloudflare / 阿里云）与待签发域名，为后续 DNS-01 自动签发铺路。
 - 单 Worker 部署：API + SPA + D1 一把梭，无外部服务依赖。
 
 ## 技术栈
@@ -77,7 +78,9 @@ acme-hub/
 │   │   ├── acme-accounts/   schema + routes + registrar（凭据自动生成 + CA 注册）
 │   │   ├── auth/            登录 + 签名 cookie
 │   │   ├── certificates/    证书实体
-│   │   └── clients/         客户端实体
+│   │   ├── clients/         客户端实体
+│   │   ├── dns-credentials/ DNS API 凭据（cloudflare / alicloud）+ creds.ts 拆分 provider 形态
+│   │   └── domains/         待签发域名 + DNS 凭据绑定
 │   ├── db/                  drizzle schema + db instance
 │   ├── middlewares/         auth gate
 │   └── index.ts             Hono app（导出 AppType 供前端 RPC）
@@ -103,6 +106,8 @@ acme-hub/
 | `/api/acme-accounts`     | 6-endpoint CRUD；写路径触发自动注册   |
 | `/api/clients`           | 标准 CRUD（`createCrudRoutes` 工厂）  |
 | `/api/certificates`      | 标准 CRUD                             |
+| `/api/dns-credentials`   | 标准 CRUD；删除时级联置空 domains.dnsCredentialId |
+| `/api/domains`           | 标准 CRUD                             |
 
 ## 部署
 
