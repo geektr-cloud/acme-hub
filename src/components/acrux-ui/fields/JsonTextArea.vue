@@ -21,7 +21,8 @@ watch(
   (val) => {
     // Skip if our current text already represents this value (user is mid-edit)
     try {
-      if (JSON.stringify(JSON.parse(text.value)) === JSON.stringify(val)) return;
+      if (JSON.stringify(JSON.parse(text.value)) === JSON.stringify(val))
+        return;
     } catch {
       // text is currently invalid — always sync
     }
