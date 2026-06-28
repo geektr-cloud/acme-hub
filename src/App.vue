@@ -14,15 +14,11 @@ const navLinkClass = (active: boolean) =>
     "no-underline transition-colors",
     active ? "text-cyan-400" : "text-zinc-400 hover:text-cyan-400",
   ].join(" ");
-const certsActive = computed(
-  () => route.name === "home" || route.name === "certificate-detail",
-);
-const clientsActive = computed(
-  () => route.name === "clients" || route.name === "client-detail",
-);
-const accountsActive = computed(
-  () => route.name === "acme-accounts" || route.name === "acme-account-detail",
-);
+const isActive = (prefix: string) =>
+  computed(() => route.path === prefix || route.path.startsWith(prefix + "/"));
+const clientsActive = isActive("/clients");
+const accountsActive = isActive("/acme-accounts");
+const certsActive = isActive("/certificates");
 
 const onLogout = async () => {
   await auth.logout();
@@ -50,7 +46,7 @@ const onLogout = async () => {
         <RouterLink to="/acme-accounts" :class="navLinkClass(accountsActive)">
           ACME 账户
         </RouterLink>
-        <RouterLink to="/" :class="navLinkClass(certsActive)">
+        <RouterLink to="/certificates" :class="navLinkClass(certsActive)">
           证书
         </RouterLink>
       </nav>

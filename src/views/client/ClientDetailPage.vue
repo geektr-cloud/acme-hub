@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { useClientStore } from "@/stores/clients";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { client } from "@/utils/api";
-import { Edit } from "@lucide/vue";
+import { Edit, RefreshCw } from "@lucide/vue";
 import ClientEditor from "./ClientEditor.vue";
 
 const id = useRouteParams<string>("id");
@@ -50,6 +50,15 @@ const account = computed(() => {
 });
 
 const ruleLabel = (type: string) => (type === "suffix" ? "后缀" : "全文");
+
+const rotateToken = async () => {
+  const res = await client.api.clients[":id"]["rotate-token"].$post({
+    param: { id: id.value },
+  });
+  if (res.ok) {
+    item.value = await res.json();
+  }
+};
 
 watch(id, () => void reload());
 </script>
@@ -84,6 +93,16 @@ watch(id, () => void reload());
                 <VSeparator />
                 <CopyBtn :value="item.token" />
               </template>
+              <VSeparator />
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-3.5"
+                title="轮换 token"
+                @click="rotateToken"
+              >
+                <RefreshCw class="size-3.5 shrink-0" />
+              </Button>
             </DataItem>
             <DataItem label="绑定账户">
               <Badge v-if="account" variant="secondary">{{

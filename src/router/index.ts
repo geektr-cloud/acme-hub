@@ -18,7 +18,11 @@ const router = createRouter({
     },
     {
       path: "/",
-      name: "home",
+      redirect: "/clients",
+    },
+    {
+      path: "/certificates",
+      name: "certificates",
       component: CertificatePage,
     },
     {

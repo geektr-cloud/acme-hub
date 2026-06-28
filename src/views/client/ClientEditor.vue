@@ -8,17 +8,12 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupInput,
-  InputGroupAddon,
-  InputGroupButton,
-} from "@/components/ui/input-group";
-import { EntitySelect } from "@/components/acrux-ui/fields";
+import { InputGroup, InputGroupInput } from "@/components/ui/input-group";
+import { Select } from "@/components/acrux-ui/fields";
 import { useClientStore } from "@/stores/clients";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, Trash2 } from "@lucide/vue";
+import { Plus, Trash2 } from "@lucide/vue";
 import type { acmeAccount } from "@server/core/acme-accounts";
 
 const props = defineProps<{ id: string | undefined }>();
@@ -32,27 +27,15 @@ const [form, issues, status, submit] = useUpsert(id);
 const { useAll: useAllAccounts } = useAcmeAccountStore();
 const [accounts, accountsStatus] = useAllAccounts();
 
-// EntitySelect 是多选；这里语义为单选，用长度 1 的数组桥接。
-const selectedAccount = computed<string[]>(() =>
-  form.acmeAccountId ? [form.acmeAccountId] : [],
-);
-const onSelectAccount = (ids: string[]) => {
-  // 取最后选中的，实现「单选」语义。
-  form.acmeAccountId = ids.length ? (ids[ids.length - 1] ?? null) : null;
-};
 const transformAccount = (a: acmeAccount.AcmeAccount) => ({
-  id: a.id,
-  searchText: `${a.name} ${a.email}`,
-  title: a.name || a.id.slice(0, 8),
-  summary: a.email || a.acmeUrl,
+  value: a.id,
+  label: a.name || a.id.slice(0, 8),
 });
 
-const genToken = () => {
-  const bytes = crypto.getRandomValues(new Uint8Array(24));
-  form.token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
-    "",
-  );
-};
+const ruleTypes = [
+  { value: "fulltext", label: "全文" },
+  { value: "suffix", label: "后缀" },
+];
 
 const addRule = () => form.allow.push({ type: "suffix", pattern: "" });
 const removeRule = (i: number) => form.allow.splice(i, 1);
@@ -93,35 +76,14 @@ const onSave = async () => {
         </InputGroup>
       </Field>
       <Field>
-        <FieldLabel for="token">Token</FieldLabel>
-        <InputGroup>
-          <InputGroupInput
-            id="token"
-            v-model="form.token"
-            autocomplete="off"
-            placeholder="调用凭据"
-            class="font-mono"
-          />
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton
-              type="button"
-              title="生成随机 token"
-              @click="genToken"
-            >
-              <RefreshCw />
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </Field>
-      <Field>
         <FieldLabel>ACME 账户</FieldLabel>
-        <EntitySelect
-          :model-value="selectedAccount"
+        <Select
+          v-model="form.acmeAccountId"
           :items="accounts"
           :status="accountsStatus"
           :transform-fn="transformAccount"
           placeholder="未绑定账户"
-          @update:model-value="onSelectAccount"
+          clearable
         />
       </Field>
       <Field :data-invalid="issues.errors('allow').length > 0">
@@ -132,13 +94,11 @@ const onSave = async () => {
             :key="i"
             class="flex items-center gap-2"
           >
-            <select
+            <Select
               v-model="rule.type"
-              class="h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-xs focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-            >
-              <option value="fulltext">全文</option>
-              <option value="suffix">后缀</option>
-            </select>
+              :items="ruleTypes"
+              class="w-24 shrink-0"
+            />
             <InputGroup class="flex-1">
               <InputGroupInput
                 v-model="rule.pattern"

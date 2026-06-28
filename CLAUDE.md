@@ -97,7 +97,31 @@ export const certificateRoutes = createCrudRoutes({
 
 非标准 endpoint 手写 `new Hono()`，错误 `throw HttpErr(status, msg)`。
 
-**写路径副作用例外**：`server/core/acme-accounts/routes.ts` 不用工厂，手写 6 个端点链式调用。原因：POST/PUT/PUT-`/:id` 落库前需调 `registrar.ensureRegistered`（凭据缺失则生成 ECDSA 密钥对 + 注册 CA 账户）。工厂没有 `beforeInsert` 钩子，硬塞会破坏 RPC 类型推断。同模式适用于任何「写前有外部副作用」的实体——直接手写并保留链式调用。
+**写路径有副作用 / 默认字段注入**：用 `@acrux/server` 工厂的生命周期 hook，不要拆出工厂。可用 hook（均接 `CrudBaseOptions`）：
+
+- `beforeCreate(data, db)` / `beforeUpdate(id, data, db)` — 写库**前**。返回 `Partial<TCreate>` 浅合并入写库 payload（用于注入 token、tenantId、`creds` 这类默认/派生字段）；返回 `void` 则不改 payload；抛错则中止。
+- `afterCreate(row, db)` / `afterUpdate(row, db)` / `afterDelete(row, db)` — 写库**后**事后副作用。
+- `beforeDelete(id, db)` — 删除前级联清理 / 置空悬挂引用。
+- 三个列表工厂额外有 `serialize(rows) => Out[]`：批量后处理列表行（join 富化等，签名批量以避免 N+1）。
+
+例：`server/core/acme-accounts/routes.ts` 当前手写 6 端点，是早期工厂尚无 `beforeCreate` 时的遗留写法。等效折叠：
+
+```ts
+export const acmeAccountRoutes = createCrudRoutes({
+  db, table: schema.acmeAccounts,
+  create: acmeAccountSchema.create.body, upsert: acmeAccountSchema.upsert.body,
+  notFound: "ACME account not found",
+  orderBy: (t) => [desc(t.createdAt)],
+  beforeCreate: async (data) => ({ creds: await ensureRegistered(data) }),
+  beforeUpdate: async (_id, data) => ({ creds: await ensureRegistered(data) }),
+  beforeDelete: async (id, db) => {
+    await db.update(schema.clients).set({ acmeAccountId: null }).where(eq(schema.clients.acmeAccountId, id));
+    await db.update(schema.certificates).set({ acmeAccountId: null }).where(eq(schema.certificates.acmeAccountId, id));
+  },
+});
+```
+
+新实体直接用工厂 + hook；不要新写"例外"的手写 6 端点。**真正必须手写的场景**：非 JSON 请求 / 响应（multipart、二进制、Range、SSE）、非 CRUD 形态（webhook、批处理、代理）。这些用 `crudBase` 续接或裸 `new Hono()`，复用 `paginatedList` / `cursorList` / `paramId` / `HttpErr` / `clampLimit` / `validJson` 等 primitives。
 
 ### 前端（`src/`）
 

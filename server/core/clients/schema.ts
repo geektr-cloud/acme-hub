@@ -48,7 +48,9 @@ export const newItem = (): Client => ({
 // ── api schemas ───────────────────────────────────────────────────────────────
 
 export const create = {
-  body: client.omit({ id: true, createdAt: true, updatedAt: true }),
+  body: client
+    .omit({ id: true, createdAt: true, updatedAt: true })
+    .extend({ token: z.string().optional() }),
 };
 
 export const upsert = {

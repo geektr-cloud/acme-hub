@@ -24,42 +24,20 @@ const { useUpsert } = useAcmeAccountStore();
 const [form, issues, status, submit] = useUpsert(id);
 
 // 预制目录 URL。
-const ACME_PRESETS = [
+const acmeOptions = [
   {
+    value: "https://acme-v02.api.letsencrypt.org/directory",
     label: "Let's Encrypt",
-    url: "https://acme-v02.api.letsencrypt.org/directory",
   },
-  { label: "ZeroSSL", url: "https://acme.zerossl.com/v2/DV90" },
+  { value: "https://acme.zerossl.com/v2/DV90", label: "ZeroSSL" },
   {
+    value: "https://acme-staging-v02.api.letsencrypt.org/directory",
     label: "Let's Encrypt Staging",
-    url: "https://acme-staging-v02.api.letsencrypt.org/directory",
   },
-] as const satisfies readonly { label: string; url: string }[];
-
-// 候选 = 预制项 +（若当前值不在预制内）自定义项。
-type AcmeOption = { url: string; label: string };
-const acmeOptions = computed<AcmeOption[]>(() => {
-  const opts: AcmeOption[] = ACME_PRESETS.map((p) => ({
-    url: p.url,
-    label: p.label,
-  }));
-  if (form.acmeUrl && !opts.some((o) => o.url === form.acmeUrl)) {
-    opts.push({ url: form.acmeUrl, label: `自定义：${form.acmeUrl}` });
-  }
-  return opts;
-});
-const transformAcme = (o: AcmeOption) => ({ value: o.url, label: o.label });
+];
 
 // 非 Let's Encrypt 目录均需 EAB。
 const showEab = computed(() => !isLetsEncrypt(form.acmeUrl));
-
-// FormSelect modelValue 是 string | null；form.acmeUrl 是 string，桥接一下。
-const acmeUrlModel = computed<string | null>({
-  get: () => form.acmeUrl || null,
-  set: (v) => {
-    form.acmeUrl = v ?? "";
-  },
-});
 
 // creds 子字段的读写桥：null 时按需创建对象，写空时尽量收敛回 null。
 type Creds = acmeAccountSchema.Creds;
@@ -159,9 +137,8 @@ const onSave = async () => {
       <Field>
         <FieldLabel>ACME 目录</FieldLabel>
         <Select
-          v-model="acmeUrlModel"
+          v-model="form.acmeUrl"
           :items="acmeOptions"
-          :transform-fn="transformAcme"
           placeholder="选择 ACME 目录"
         />
       </Field>
