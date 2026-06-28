@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from "vue";
+import { computed, watch } from "vue";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton, useFormModel } from "@/components/acrux-ui/actions";
 import {
@@ -23,6 +23,7 @@ import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { client } from "@/utils/api";
 import { Edit } from "@lucide/vue";
 import AcmeAccountEditor from "./AcmeAccountEditor.vue";
+import { isEab } from "./acme";
 
 const id = useRouteParams<string>("id");
 const { useRemoval } = useAcmeAccountStore();
@@ -35,6 +36,8 @@ const [item, status, reload] = useAsyncState(fetchItem, undefined, {
   immediate: true,
 });
 const removal = useRemoval(id);
+
+const showEab = computed(() => isEab(item.value?.acmeUrl));
 
 watch(id, () => void reload());
 </script>
@@ -59,11 +62,6 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
-            </DataItem>
             <DataItem label="名称">{{ item.name || "(未命名)" }}</DataItem>
             <DataItem label="描述">{{ item.description || "(无)" }}</DataItem>
             <DataItem label="邮箱">{{ item.email || "(无)" }}</DataItem>
@@ -75,7 +73,7 @@ watch(id, () => void reload());
                 <CopyBtn :value="item.creds.accountUrl" />
               </template>
             </DataItem>
-            <DataItem label="EAB Kid">
+            <DataItem v-if="showEab" label="EAB Kid">
               <code
                 v-if="item.creds?.eab?.kid"
                 class="font-mono text-xs break-all"
@@ -87,7 +85,7 @@ watch(id, () => void reload());
                 <CopyBtn :value="item.creds.eab.kid" />
               </template>
             </DataItem>
-            <DataItem label="EAB HMAC Key">
+            <DataItem v-if="showEab" label="EAB HMAC Key">
               <code
                 v-if="item.creds?.eab?.hmacKey"
                 class="font-mono text-xs break-all"
@@ -100,30 +98,44 @@ watch(id, () => void reload());
               </template>
             </DataItem>
             <DataItem label="私钥">
-              <div class="flex w-full flex-col gap-1">
-                <pre
-                  v-if="item.creds?.privateKey"
-                  class="max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
-                  >{{ item.creds.privateKey }}</pre
-                >
-                <span v-else class="text-zinc-500">(无)</span>
-                <div v-if="item.creds?.privateKey">
-                  <CopyBtn :value="item.creds.privateKey" />
-                </div>
+              <div
+                v-if="item.creds?.privateKey"
+                class="flex w-full flex-col gap-1"
+              >
+                <details>
+                  <summary
+                    class="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
+                  >
+                    点击展开私钥
+                  </summary>
+                  <pre
+                    class="mt-1 max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
+                    >{{ item.creds.privateKey }}</pre
+                  >
+                </details>
+                <CopyBtn :value="item.creds.privateKey" />
               </div>
+              <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="公钥">
-              <div class="flex w-full flex-col gap-1">
-                <pre
-                  v-if="item.creds?.publicKey"
-                  class="max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
-                  >{{ item.creds.publicKey }}</pre
-                >
-                <span v-else class="text-zinc-500">(无)</span>
-                <div v-if="item.creds?.publicKey">
-                  <CopyBtn :value="item.creds.publicKey" />
-                </div>
+              <div
+                v-if="item.creds?.publicKey"
+                class="flex w-full flex-col gap-1"
+              >
+                <details>
+                  <summary
+                    class="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
+                  >
+                    点击展开公钥
+                  </summary>
+                  <pre
+                    class="mt-1 max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
+                    >{{ item.creds.publicKey }}</pre
+                  >
+                </details>
+                <CopyBtn :value="item.creds.publicKey" />
               </div>
+              <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="创建时间">
               <DateFormatter :value="item.createdAt" />
@@ -136,6 +148,11 @@ watch(id, () => void reload());
                 format="distance"
                 class="text-zinc-500"
               />
+            </DataItem>
+            <DataItem label="ID">
+              {{ item.id }}
+              <VSeparator />
+              <CopyBtn :value="item.id" />
             </DataItem>
           </DataView>
         </CardContent>

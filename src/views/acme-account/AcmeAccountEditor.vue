@@ -14,6 +14,7 @@ import { Select } from "@/components/acrux-ui/fields";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { Button } from "@/components/ui/button";
 import type { acmeAccount as acmeAccountSchema } from "@server/core/acme-accounts";
+import { isLetsEncrypt } from "./acme";
 
 const props = defineProps<{ id: string | undefined }>();
 const emit = defineEmits<{ (e: "close"): void }>();
@@ -22,49 +23,35 @@ const id = computed(() => props.id);
 const { useUpsert } = useAcmeAccountStore();
 const [form, issues, status, submit] = useUpsert(id);
 
-// 预制目录 URL。type 控制凭据字段显示：letsencrypt 无需 EAB；eab 需要 EAB Kid + HMAC。
-type AcmeType = "letsencrypt" | "eab";
+// 预制目录 URL。
 const ACME_PRESETS = [
   {
-    type: "letsencrypt",
     label: "Let's Encrypt",
     url: "https://acme-v02.api.letsencrypt.org/directory",
   },
-  { type: "eab", label: "ZeroSSL", url: "https://acme.zerossl.com/v2/DV90" },
+  { label: "ZeroSSL", url: "https://acme.zerossl.com/v2/DV90" },
   {
-    type: "letsencrypt",
     label: "Let's Encrypt Staging",
     url: "https://acme-staging-v02.api.letsencrypt.org/directory",
   },
-] as const satisfies readonly { type: AcmeType; label: string; url: string }[];
+] as const satisfies readonly { label: string; url: string }[];
 
 // 候选 = 预制项 +（若当前值不在预制内）自定义项。
-type AcmeOption = { type: AcmeType; url: string; label: string };
+type AcmeOption = { url: string; label: string };
 const acmeOptions = computed<AcmeOption[]>(() => {
   const opts: AcmeOption[] = ACME_PRESETS.map((p) => ({
-    type: p.type,
     url: p.url,
     label: p.label,
   }));
   if (form.acmeUrl && !opts.some((o) => o.url === form.acmeUrl)) {
-    // 自定义条目：若已存 EAB 凭据则判为 eab，否则 letsencrypt。
-    const hasEab = Boolean(form.creds?.eab?.kid || form.creds?.eab?.hmacKey);
-    opts.push({
-      type: hasEab ? "eab" : "letsencrypt",
-      url: form.acmeUrl,
-      label: `自定义：${form.acmeUrl}`,
-    });
+    opts.push({ url: form.acmeUrl, label: `自定义：${form.acmeUrl}` });
   }
   return opts;
 });
 const transformAcme = (o: AcmeOption) => ({ value: o.url, label: o.label });
 
-// 当前选中目录的类型；驱动凭据字段显隐。
-const currentAcmeType = computed<AcmeType>(
-  () =>
-    acmeOptions.value.find((o) => o.url === form.acmeUrl)?.type ??
-    "letsencrypt",
-);
+// 非 Let's Encrypt 目录均需 EAB。
+const showEab = computed(() => !isLetsEncrypt(form.acmeUrl));
 
 // FormSelect modelValue 是 string | null；form.acmeUrl 是 string，桥接一下。
 const acmeUrlModel = computed<string | null>({
@@ -182,7 +169,7 @@ const onSave = async () => {
       <FieldLegend class="mt-2 text-sm text-zinc-400"
         >凭据（敏感，由签发流程生成，可手动填入）</FieldLegend
       >
-      <Field v-if="currentAcmeType === 'eab'">
+      <Field v-if="showEab">
         <FieldLabel for="eabKid">EAB Kid</FieldLabel>
         <InputGroup>
           <InputGroupInput
@@ -194,7 +181,7 @@ const onSave = async () => {
           />
         </InputGroup>
       </Field>
-      <Field v-if="currentAcmeType === 'eab'">
+      <Field v-if="showEab">
         <FieldLabel for="eabHmacKey">EAB HMAC Key</FieldLabel>
         <InputGroup>
           <InputGroupInput

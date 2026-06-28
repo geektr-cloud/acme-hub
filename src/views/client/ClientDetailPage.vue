@@ -74,11 +74,6 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
-            </DataItem>
             <DataItem label="名称">{{ item.name || "(未命名)" }}</DataItem>
             <DataItem label="描述">{{ item.description || "(无)" }}</DataItem>
             <DataItem label="Token">
@@ -122,6 +117,11 @@ watch(id, () => void reload());
                 format="distance"
                 class="text-zinc-500"
               />
+            </DataItem>
+            <DataItem label="ID">
+              {{ item.id }}
+              <VSeparator />
+              <CopyBtn :value="item.id" />
             </DataItem>
           </DataView>
         </CardContent>

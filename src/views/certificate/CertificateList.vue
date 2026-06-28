@@ -49,11 +49,9 @@ const removal = useConfirmPopover({
         >
           <TableCell class="font-mono">{{ row.domain || "(无)" }}</TableCell>
           <TableCell>
-            <span v-if="row.alt.length" class="inline-flex flex-wrap gap-1">
-              <Badge v-for="d in row.alt" :key="d" variant="outline">{{
-                d
-              }}</Badge>
-            </span>
+            <Badge v-if="row.alt.length" variant="secondary">{{
+              row.alt.length
+            }}</Badge>
             <span v-else class="text-zinc-500">—</span>
           </TableCell>
           <TableCell class="text-zinc-500">

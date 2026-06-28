@@ -72,11 +72,6 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
-            </DataItem>
             <DataItem label="主域名">
               <code class="font-mono">{{ item.domain || "(无)" }}</code>
             </DataItem>
@@ -99,15 +94,21 @@ watch(id, () => void reload());
               :key="block.label"
               :label="block.label"
             >
-              <div class="flex w-full flex-col gap-1">
-                <pre
-                  v-if="block.value"
-                  class="max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
-                  >{{ block.value }}</pre
-                >
-                <span v-else class="text-zinc-500">(无)</span>
-                <div v-if="block.value"><CopyBtn :value="block.value" /></div>
+              <div v-if="block.value" class="flex w-full flex-col gap-1">
+                <details>
+                  <summary
+                    class="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
+                  >
+                    点击展开
+                  </summary>
+                  <pre
+                    class="mt-1 max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
+                    >{{ block.value }}</pre
+                  >
+                </details>
+                <CopyBtn :value="block.value" />
               </div>
+              <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="配置 (config)">
               <pre
@@ -126,6 +127,11 @@ watch(id, () => void reload());
                 format="distance"
                 class="text-zinc-500"
               />
+            </DataItem>
+            <DataItem label="ID">
+              {{ item.id }}
+              <VSeparator />
+              <CopyBtn :value="item.id" />
             </DataItem>
           </DataView>
         </CardContent>

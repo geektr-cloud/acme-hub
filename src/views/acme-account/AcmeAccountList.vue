@@ -36,7 +36,6 @@ const removal = useConfirmPopover({
         <TableRow>
           <TableHead>名称</TableHead>
           <TableHead>邮箱</TableHead>
-          <TableHead>目录 URL</TableHead>
           <TableHead>ID</TableHead>
           <TableHead>更新</TableHead>
           <TableHead class="w-[100px]">操作</TableHead>
@@ -51,9 +50,6 @@ const removal = useConfirmPopover({
         >
           <TableCell>{{ row.name || "(未命名)" }}</TableCell>
           <TableCell class="text-zinc-400">{{ row.email || "—" }}</TableCell>
-          <TableCell class="max-w-[260px] truncate text-zinc-500">{{
-            row.acmeUrl || "—"
-          }}</TableCell>
           <TableCell class="text-zinc-500">
             <span class="inline-flex items-center gap-1" @click.stop>
               {{ row.id.slice(0, 8) }}
