@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from "@/components/ui/button";
+import { Icon, IconBtn } from "@/components/acrux-ui/base";
 import { useClipboard } from "@vueuse/core";
 import { Check, Copy } from "@lucide/vue";
 
@@ -8,14 +8,8 @@ defineProps<{ value: string }>();
 </script>
 
 <template>
-  <Button
-    variant="ghost"
-    size="icon"
-    class="size-3.5 cursor-pointer"
-    @click="copy(value)"
-    :disabled="!value"
-  >
-    <Copy class="size-3.5 shrink-0" v-if="!copied" />
-    <Check class="size-3.5 shrink-0" v-else />
-  </Button>
+  <IconBtn size="icon-xs" class="cursor-pointer" :disabled="!value" @click="copy(value)">
+    <Icon v-if="!copied" :as="Copy" />
+    <Icon v-else :as="Check" />
+  </IconBtn>
 </template>

@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import Button from "@/components/ui/button/Button.vue";
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { IconBtn } from "@/components/acrux-ui/base";
 import { PopoverPortal, type ReferenceElement } from "reka-ui";
 import { Check, X } from "@lucide/vue";
 import type { Removal } from "@acrux/core";
@@ -33,23 +29,11 @@ const submit = () =>
       <PopoverContent side="left" class="w-auto">
         <div class="flex flex-row items-center gap-2">
           <div>{{ message }}</div>
-          <Button
-            variant="secondary"
-            size="icon"
-            :disabled="status.loading"
-            @click="void submit()"
-          >
+          <IconBtn variant="secondary" :disabled="status.loading" @click="void submit()">
             <Check v-if="!status.loading" />
             <Spinner v-else />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            v-show="!status.loading"
-            @click="open = false"
-          >
-            <X />
-          </Button>
+          </IconBtn>
+          <IconBtn :as="X" v-show="!status.loading" @click="open = false" />
         </div>
         <p v-if="status.error" class="text-red-500">{{ status.error }}</p>
       </PopoverContent>

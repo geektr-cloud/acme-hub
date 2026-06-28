@@ -1,25 +1,11 @@
 <script setup lang="ts">
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { computed, useSlots } from "vue";
 import { File, FileX, Plus, RotateCcw } from "@lucide/vue";
 import Button from "@/components/ui/button/Button.vue";
 import Spinner from "@/components/ui/spinner/Spinner.vue";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const props = defineProps<{
   title: string;
@@ -27,17 +13,12 @@ const props = defineProps<{
   loading?: boolean;
   error?: unknown;
   items?: unknown[] | null;
-  hideCreate?: boolean;
 }>();
 
 defineEmits<{ (e: "retry"): void; (e: "create"): void }>();
 
 const slots = useSlots();
-const errorMessage = computed(() =>
-  props.error instanceof Error
-    ? props.error.message
-    : String(props.error ?? ""),
-);
+const errorMessage = computed(() => (props.error instanceof Error ? props.error.message : String(props.error ?? "")));
 </script>
 
 <template>
@@ -53,21 +34,12 @@ const errorMessage = computed(() =>
       </div>
       <div class="flex items-center gap-2">
         <slot name="actions"></slot>
-        <div
-          v-if="slots.actions"
-          class="bg-border mx-1 h-6 w-px"
-          aria-hidden="true"
-        ></div>
+        <div v-if="slots.actions" class="bg-border mx-1 h-6 w-px" aria-hidden="true"></div>
         <Button variant="secondary" aria-label="刷新" @click="$emit('retry')">
           <Spinner v-if="loading" />
           <RotateCcw v-else />
         </Button>
-        <Button
-          type="primary"
-          aria-label="新建"
-          @click="$emit('create')"
-          v-if="!hideCreate"
-        >
+        <Button type="primary" aria-label="新建" @click="$emit('create')">
           <Plus />
         </Button>
       </div>
@@ -99,9 +71,7 @@ const errorMessage = computed(() =>
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button variant="secondary" @click="$emit('retry')">
-          <RotateCcw />重试
-        </Button>
+        <Button variant="secondary" @click="$emit('retry')"> <RotateCcw />重试 </Button>
       </EmptyContent>
     </Empty>
     <Empty v-if="!loading && items?.length === 0" class="py-24 text-ring">
@@ -111,10 +81,8 @@ const errorMessage = computed(() =>
         </EmptyMedia>
         <EmptyTitle>暂无数据</EmptyTitle>
       </EmptyHeader>
-      <EmptyContent v-if="!hideCreate">
-        <Button variant="secondary" @click="$emit('create')">
-          <Plus />新建
-        </Button>
+      <EmptyContent>
+        <Button variant="secondary" @click="$emit('create')"> <Plus />新建 </Button>
       </EmptyContent>
     </Empty>
     <slot />

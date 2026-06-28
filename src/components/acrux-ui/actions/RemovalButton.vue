@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import Button from "@/components/ui/button/Button.vue";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { IconBtn } from "@/components/acrux-ui/base";
 import { PopoverClose } from "reka-ui";
 import { Check, Trash, X } from "@lucide/vue";
 import { useRouter } from "vue-router";
@@ -38,19 +35,12 @@ const remove = () =>
     <PopoverContent side="left" class="w-auto">
       <div class="flex flex-row items-center gap-2">
         <div>{{ confirm }}</div>
-        <Button
-          variant="secondary"
-          size="icon"
-          :disabled="status.loading"
-          @click="void remove()"
-        >
+        <IconBtn variant="secondary" :disabled="status.loading" @click="void remove()">
           <Check v-if="!status.loading" />
           <Spinner v-else />
-        </Button>
+        </IconBtn>
         <PopoverClose as-child>
-          <Button variant="ghost" size="icon" v-show="!status.loading">
-            <X />
-          </Button>
+          <IconBtn :as="X" v-show="!status.loading" />
         </PopoverClose>
       </div>
       <p v-if="status.error" class="text-red-500">{{ status.error }}</p>

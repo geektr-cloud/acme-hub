@@ -10,12 +10,7 @@ onMounted(() => (canGoBack.value = !!window.history.state?.back));
 </script>
 
 <template>
-  <Button
-    v-bind="$attrs"
-    variant="ghost"
-    :disabled="!canGoBack"
-    @click="router.back()"
-  >
+  <Button v-bind="$attrs" variant="ghost" :disabled="!canGoBack" @click="router.back()">
     <ArrowLeft />
     <slot>返回</slot>
   </Button>

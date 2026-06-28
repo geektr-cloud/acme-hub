@@ -2,6 +2,7 @@
 import { nextTick, ref } from "vue";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { IconBtn } from "@/components/acrux-ui/base";
 import { Plus, X } from "@lucide/vue";
 
 const props = withDefaults(
@@ -88,25 +89,15 @@ const onBackspace = (index: number, event: KeyboardEvent) => {
         @keydown.enter.prevent="insertAfter(index)"
         @keydown.backspace="onBackspace(index, $event)"
       />
-      <Button
-        variant="ghost"
-        size="icon"
+      <IconBtn
+        :as="X"
         class="text-destructive hover:text-destructive"
         :disabled="disabled"
         @click="removeLine(index)"
-      >
-        <X class="size-4" />
-      </Button>
+      />
     </div>
 
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      class="w-fit"
-      :disabled="disabled"
-      @click="addLine"
-    >
+    <Button type="button" variant="outline" size="sm" class="w-fit" :disabled="disabled" @click="addLine">
       <Plus class="size-4" />
       {{ addText }}
     </Button>

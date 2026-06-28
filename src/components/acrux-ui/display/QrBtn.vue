@@ -2,15 +2,12 @@
 import { defineAsyncComponent } from "vue";
 import { useModal } from "vue-final-modal";
 import { QrCode } from "@lucide/vue";
-import { Button } from "@/components/ui/button";
+import { IconBtn } from "@/components/acrux-ui/base";
 
-withDefaults(
-  defineProps<{ value: string; small?: boolean; title?: string }>(),
-  {
-    small: false,
-    title: "二维码",
-  },
-);
+withDefaults(defineProps<{ value: string; small?: boolean; title?: string }>(), {
+  small: false,
+  title: "二维码",
+});
 
 // Lazy chunk: QR encoder + modal markup don't ship in the main bundle.
 const QrModal = defineAsyncComponent(() => import("./QrModal.vue"));
@@ -25,14 +22,12 @@ const onClick = (value: string) => {
 </script>
 
 <template>
-  <Button
-    variant="ghost"
-    size="icon"
-    :class="small ? 'size-3.5 cursor-pointer' : 'cursor-pointer'"
+  <IconBtn
+    :as="QrCode"
+    :size="small ? 'icon-xs' : 'icon'"
+    class="cursor-pointer"
     :disabled="!value"
     :title="title"
     @click="onClick(value)"
-  >
-    <QrCode :class="small ? 'size-3.5 shrink-0' : ''" />
-  </Button>
+  />
 </template>
