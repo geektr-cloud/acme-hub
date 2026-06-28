@@ -1,0 +1,69 @@
+{
+  "$schema": "https://shadcn-vue.com/schema/registry.json",
+  "name": "acrux",
+  "homepage": "https://github.com/geektr-cloud/cfworker-template",
+  "items": [
+    {
+      "name": "display",
+      "type": "registry:component",
+      "title": "Display",
+      "description": "只读数据展示组件组：DataView/DataItem/VSeparator 容器、CopyBtn/CopyTag 复制、Link/Route 链接、MultiLine 多行、DateFormatter 时间、QrBtn/QrModal 二维码。",
+      "dependencies": ["@vueuse/core", "date-fns", "qrcode", "vue-final-modal", "@lucide/vue"],
+      "registryDependencies": ["badge", "button", "card", "separator"],
+      "files": [
+        { "path": "src/components/acrux-ui/display/index.ts", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/DataView.ts", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/CopyBtn.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/CopyTag.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/Link.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/Route.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/MultiLine.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/DateFormatter.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/QrBtn.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/display/QrModal.vue", "type": "registry:component" }
+      ]
+    },
+    {
+      "name": "fields",
+      "type": "registry:component",
+      "title": "Fields",
+      "description": "复合输入组件组：MultiLineInput 多行文本、JsonTextArea JSON 文本域、EntitySelect 实体多选。",
+      "dependencies": ["@acrux/core", "@lucide/vue"],
+      "registryDependencies": ["button", "input", "popover", "skeleton", "textarea"],
+      "files": [
+        { "path": "src/components/acrux-ui/fields/index.ts", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/fields/MultiLineInput.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/fields/JsonTextArea.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/fields/EntitySelect.vue", "type": "registry:component" }
+      ]
+    },
+    {
+      "name": "page",
+      "type": "registry:component",
+      "title": "Page",
+      "description": "CRUD 页面外壳：PageEntry 列表外壳(骨架/空态/错误态)、PageDetail 详情外壳、BackButton 返回。",
+      "dependencies": ["vue-router", "@lucide/vue"],
+      "registryDependencies": ["@acrux/display", "button", "card", "empty", "skeleton", "spinner", "table"],
+      "files": [
+        { "path": "src/components/acrux-ui/page/index.ts", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/page/PageEntry.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/page/PageDetail.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/page/BackButton.vue", "type": "registry:component" }
+      ]
+    },
+    {
+      "name": "actions",
+      "type": "registry:component",
+      "title": "Actions",
+      "description": "破坏性/交互操作组：RemovalButton 删除确认按钮、ConfirmPopover + useConfirmPopover 行内锚定确认、useFormModel 模态表单。",
+      "dependencies": ["@acrux/core", "vue-final-modal", "vue-router", "@lucide/vue"],
+      "registryDependencies": ["button", "card", "popover", "spinner"],
+      "files": [
+        { "path": "src/components/acrux-ui/actions/index.ts", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/actions/RemovalButton.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/actions/ConfirmPopover.vue", "type": "registry:component" },
+        { "path": "src/components/acrux-ui/actions/utils.ts", "type": "registry:component" }
+      ]
+    }
+  ]
+}
