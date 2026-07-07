@@ -7,12 +7,14 @@ import { certificateRoutes } from "@server/core/certificates/routes";
 import { dnsCredentialRoutes } from "@server/core/dns-credentials/routes";
 import { domainRoutes } from "@server/core/domains/routes";
 import { authRoutes } from "@server/core/auth/routes";
+import { acmeV1Routes } from "@server/core/acme-v1/routes";
 import { requireAuth } from "@server/middlewares/auth";
 import { ErrorHandler } from "@acrux/server";
 
 export const app = new Hono()
   .use("/api/*", requireAuth)
   .route("/api/auth", authRoutes)
+  .route("/api/acme/v1", acmeV1Routes)
   .route("/api/acme-accounts", acmeAccountRoutes)
   .route("/api/clients", clientRoutes)
   .route("/api/certificates", certificateRoutes)

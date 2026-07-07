@@ -8,6 +8,7 @@ const COOKIE_VALUE = "ok";
 
 export const requireAuth = createMiddleware(async (c, next) => {
   if (c.req.path.startsWith("/api/auth/")) return next();
+  if (c.req.path.startsWith("/api/acme/v1/")) return next();
   const val = await getSignedCookie(c, env.API_TOKEN, COOKIE_NAME);
   if (val !== COOKIE_VALUE) throw HttpErr(401, "unauthorized");
   return next();
