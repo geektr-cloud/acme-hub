@@ -1,20 +1,26 @@
 import type { AllowRule } from "@server/core/clients/schema";
 export type { AllowRule };
 
-/**
- * Check if domain matches any allow rule.
- * fulltext: exact match. suffix: label-aligned endsWith (domain === pattern || domain.endsWith("." + pattern)).
- * Empty rules → deny. Pattern中的 * 当普通字符。
- */
-export function allowMatch(domain: string, rules: AllowRule[]): boolean {
-  if (rules.length === 0) return false;
+function wildcardToBare(domain: string): string {
+  return domain.startsWith("*.") ? domain.slice(2) : domain;
+}
+
+export function findAllowMatch(
+  domain: string,
+  rules: AllowRule[],
+): AllowRule | null {
+  const bare = wildcardToBare(domain);
   for (const rule of rules) {
     if (rule.type === "fulltext") {
-      if (domain === rule.pattern) return true;
+      if (domain === rule.pattern) return rule;
     } else if (rule.type === "suffix") {
-      if (domain === rule.pattern || domain.endsWith("." + rule.pattern))
-        return true;
+      if (bare === rule.pattern || bare.endsWith("." + rule.pattern))
+        return rule;
     }
   }
-  return false;
+  return null;
+}
+
+export function allowMatch(domain: string, rules: AllowRule[]): boolean {
+  return findAllowMatch(domain, rules) !== null;
 }

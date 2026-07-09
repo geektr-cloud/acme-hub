@@ -1,5 +1,40 @@
 import { describe, it, expect } from "vitest";
-import { allowMatch } from "./match";
+import { allowMatch, findAllowMatch } from "./match";
+
+describe("findAllowMatch", () => {
+  it("fulltext 命中返回规则", () => {
+    const rules = [
+      { type: "fulltext" as const, pattern: "app.example.com" },
+      { type: "suffix" as const, pattern: "example.com" },
+    ];
+    const result = findAllowMatch("app.example.com", rules);
+    expect(result).toEqual({ type: "fulltext", pattern: "app.example.com" });
+  });
+
+  it("suffix 命中返回规则", () => {
+    const rules = [{ type: "suffix" as const, pattern: "example.com" }];
+    const result = findAllowMatch("foo.example.com", rules);
+    expect(result).toEqual({ type: "suffix", pattern: "example.com" });
+  });
+
+  it("无命中返回 null", () => {
+    const rules = [{ type: "suffix" as const, pattern: "example.com" }];
+    expect(findAllowMatch("other.org", rules)).toBeNull();
+  });
+
+  it("空规则返回 null", () => {
+    expect(findAllowMatch("example.com", [])).toBeNull();
+  });
+
+  it("优先级为数组序", () => {
+    const rules = [
+      { type: "fulltext" as const, pattern: "example.com" },
+      { type: "suffix" as const, pattern: "example.com" },
+    ];
+    const result = findAllowMatch("example.com", rules);
+    expect(result?.type).toBe("fulltext");
+  });
+});
 
 describe("allowMatch", () => {
   it("fulltext exact match", () => {
@@ -13,7 +48,6 @@ describe("allowMatch", () => {
     expect(allowMatch("example.com", rules)).toBe(true);
     expect(allowMatch("foo.example.com", rules)).toBe(true);
     expect(allowMatch("a.b.example.com", rules)).toBe(true);
-    // Not label-aligned: "notexample.com"
     expect(allowMatch("notexample.com", rules)).toBe(false);
     expect(allowMatch("other.org", rules)).toBe(false);
   });
@@ -26,6 +60,13 @@ describe("allowMatch", () => {
     const rules = [{ type: "fulltext" as const, pattern: "*.example.com" }];
     expect(allowMatch("*.example.com", rules)).toBe(true);
     expect(allowMatch("foo.example.com", rules)).toBe(false);
+  });
+
+  it("wildcard domain 命中 suffix 规则", () => {
+    const rules = [{ type: "suffix" as const, pattern: "example.com" }];
+    expect(allowMatch("*.example.com", rules)).toBe(true);
+    expect(allowMatch("*.sub.example.com", rules)).toBe(true);
+    expect(allowMatch("*.other.com", rules)).toBe(false);
   });
 
   it("multiple rules: any match → true", () => {
