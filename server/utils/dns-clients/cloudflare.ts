@@ -59,6 +59,7 @@ interface CfDnsRecord {
   name: string;
   content: string;
   type: string;
+  comment?: string;
 }
 
 export function createCloudflareDnsClient(creds: CloudflareCreds): DnsClient {
@@ -88,19 +89,24 @@ export function createCloudflareDnsClient(creds: CloudflareCreds): DnsClient {
           id: r.id,
           fqdn: r.name,
           value: stripQuotes(r.content),
+          remark: r.comment,
         }));
     },
 
-    async addTxt(zone, fqdn, value) {
+    async ensureTxt(zone, fqdn, value, remark) {
       const zoneId = await findZoneId(zone);
+      const existing = await this.listTxt(zone, fqdn);
+      if (existing.some((r) => r.value === value)) return;
+      const body: Record<string, unknown> = {
+        type: "TXT",
+        name: fqdn,
+        content: value,
+        ttl: 60,
+      };
+      if (remark) body.comment = remark;
       await request<CfDnsRecord>(creds, `/zones/${zoneId}/dns_records`, {
         method: "POST",
-        body: JSON.stringify({
-          type: "TXT",
-          name: fqdn,
-          content: value,
-          ttl: 60,
-        }),
+        body: JSON.stringify(body),
       });
     },
 

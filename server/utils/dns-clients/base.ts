@@ -2,11 +2,17 @@ export interface TxtRecord {
   id: string;
   fqdn: string;
   value: string;
+  remark?: string;
 }
 
 export interface DnsClient {
   listTxt(zone: string, fqdn: string): Promise<TxtRecord[]>;
-  addTxt(zone: string, fqdn: string, value: string): Promise<void>;
+  ensureTxt(
+    zone: string,
+    fqdn: string,
+    value: string,
+    remark?: string,
+  ): Promise<void>;
   removeTxt(zone: string, fqdn: string, value: string): Promise<void>;
 }
 

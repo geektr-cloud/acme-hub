@@ -41,34 +41,53 @@ describe.runIf(hasCreds)("aliyun integration", () => {
   const zone = "anitya.cn";
   const randomHex = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
   const fqdn = `_acme-hub-test-${randomHex}.${zone}`;
-  const value = `test-value-${randomHex}`;
 
   afterAll(async () => {
-    for (const fqdnToClean of [fqdn]) {
-      try {
-        const records = await client.listTxt(zone, fqdnToClean);
-        for (const rec of records) {
-          await client.removeTxt(zone, fqdnToClean, rec.value);
-        }
-      } catch (e) {
-        console.warn(`cleanup failed for ${fqdnToClean}:`, e);
+    try {
+      const records = await client.listTxt(zone, fqdn);
+      for (const rec of records) {
+        await client.removeTxt(zone, fqdn, rec.value);
       }
+    } catch (e) {
+      console.warn(`cleanup failed for ${fqdn}:`, e);
     }
   });
 
-  it("add → list → remove → list", async () => {
-    await client.addTxt(zone, fqdn, value);
-
-    const afterAdd = await client.listTxt(zone, fqdn);
-    expect(afterAdd.some((r) => r.value === value)).toBe(true);
-
-    await client.removeTxt(zone, fqdn, value);
-
-    const afterRemove = await client.listTxt(zone, fqdn);
-    expect(afterRemove.some((r) => r.value === value)).toBe(false);
+  it("ensureTxt 创建新记录", async () => {
+    await client.ensureTxt(zone, fqdn, "val-1", "test-tag-1");
+    const records = await client.listTxt(zone, fqdn);
+    expect(records.some((r) => r.value === "val-1")).toBe(true);
   }, 30_000);
 
-  it("removeTxt 幂等：对已删除记录不抛错", async () => {
-    await expect(client.removeTxt(zone, fqdn, value)).resolves.toBeUndefined();
+  it("ensureTxt 幂等：相同 value + remark 不重复创建", async () => {
+    await client.ensureTxt(zone, fqdn, "val-1", "test-tag-1");
+    const records = await client.listTxt(zone, fqdn);
+    const matched = records.filter((r) => r.value === "val-1");
+    expect(matched.length).toBe(1);
+  }, 30_000);
+
+  it("同 FQDN 双值并存 + removeTxt 精确删除", async () => {
+    await client.ensureTxt(zone, fqdn, "val-a", "test-a");
+    await client.ensureTxt(zone, fqdn, "val-b", "test-b");
+    const records = await client.listTxt(zone, fqdn);
+    expect(records.some((r) => r.value === "val-a")).toBe(true);
+    expect(records.some((r) => r.value === "val-b")).toBe(true);
+
+    await client.removeTxt(zone, fqdn, "val-a");
+    const after = await client.listTxt(zone, fqdn);
+    expect(after.some((r) => r.value === "val-a")).toBe(false);
+    expect(after.some((r) => r.value === "val-b")).toBe(true);
+  }, 30_000);
+
+  it("removeTxt 清理 + 幂等", async () => {
+    const records = await client.listTxt(zone, fqdn);
+    for (const rec of records) {
+      await client.removeTxt(zone, fqdn, rec.value);
+    }
+    const after = await client.listTxt(zone, fqdn);
+    expect(after.length).toBe(0);
+    await expect(
+      client.removeTxt(zone, fqdn, "nonexistent"),
+    ).resolves.toBeUndefined();
   }, 30_000);
 });

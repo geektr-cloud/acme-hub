@@ -39,6 +39,15 @@ async function sign(
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
+class AliyunDnsError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(`Aliyun DNS ${code}: ${message}`);
+    this.name = "AliyunDnsError";
+    this.code = code;
+  }
+}
+
 async function request(
   creds: AlicloudCreds,
   action: string,
@@ -70,7 +79,7 @@ async function request(
     typeof (json as { Code: unknown }).Code === "string"
   ) {
     const { Code, Message } = json as { Code: string; Message: string };
-    throw new Error(`Aliyun DNS ${Code}: ${Message}`);
+    throw new AliyunDnsError(Code, Message ?? "Unknown error");
   }
   if (!res.ok) {
     throw new Error(`Aliyun DNS HTTP ${res.status}`);
@@ -84,6 +93,7 @@ interface AliyunRecord {
   DomainName: string;
   Value: string;
   Type: string;
+  Remark?: string;
 }
 
 function isRecordArray(v: unknown): v is AliyunRecord[] {
@@ -129,17 +139,21 @@ export function createAliyunDnsClient(creds: AlicloudCreds): DnsClient {
           id: r.RecordId,
           fqdn: r.RR === "@" ? zone : `${r.RR}.${zone}`,
           value: r.Value,
+          remark: r.Remark ?? undefined,
         }));
     },
 
-    async addTxt(zone, fqdn, value) {
+    async ensureTxt(zone, fqdn, value, remark) {
       const rr = fqdnToRr(zone, fqdn);
+      const existing = await this.listTxt(zone, fqdn);
+      if (existing.some((r) => r.value === value)) return;
       await request(creds, "AddDomainRecord", {
         DomainName: zone,
         RR: rr,
         Type: "TXT",
         Value: value,
         TTL: "600",
+        ...(remark ? { Remark: remark } : {}),
       });
     },
 
