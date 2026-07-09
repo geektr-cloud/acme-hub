@@ -15,7 +15,7 @@ ACME 证书管理中枢。Cloudflare Worker 单体应用，Vue 3 SPA + Hono JSON
 
 | 层      | 选型                                                           |
 | ------- | -------------------------------------------------------------- |
-| Runtime | Cloudflare Workers（`workerd`，`nodejs_compat` 仅做兜底）      |
+| Runtime | Cloudflare Workers（`workerd`，`nodejs_compat` 仍需保留——`Buffer` 等） |
 | API     | Hono 4 + `@hono/zod-validator` + zod 4                         |
 | DB      | D1（SQLite）+ Drizzle ORM（`1.0.0-rc.3`）                      |
 | ACME    | `@geektr/acme-dns01`（DNS-01 only，native fetch，Web Crypto）  |
@@ -42,6 +42,8 @@ wrangler d1 execute main --local --file=drizzle/0000_<...>/migration.sql
 ```bash
 echo "your-token" | wrangler secret put API_TOKEN
 ```
+
+本地签发证书需要 cloudflare-pal dig 服务（DNS 预验证直查权威 NS）。端点在 `wrangler.jsonc` `vars.CFPAL_ENDPOINT` 中留空（类型占位），实际值通过 `.env.local` 覆盖（不设则用默认 `https://cloudflare-pal.geektr.cloud`）。
 
 ## 常用命令
 
@@ -76,11 +78,15 @@ acme-hub/
 ├── server/
 │   ├── core/
 │   │   ├── acme-accounts/   schema + routes + registrar（凭据自动生成 + CA 注册）
+│   │   ├── acme-v1/         对外 ACME 端点：决策 + DNS 解析 + 签发 + SSE 播报
 │   │   ├── auth/            登录 + 签名 cookie
 │   │   ├── certificates/    证书实体
 │   │   ├── clients/         客户端实体
 │   │   ├── dns-credentials/ DNS API 凭据（cloudflare / alicloud）+ creds.ts 拆分 provider 形态
 │   │   └── domains/         待签发域名 + DNS 凭据绑定
+│   ├── utils/
+│   │   ├── dns-clients/     DNS 服务商 API 抽象（aliyun / cloudflare）+ createDnsClient
+│   │   └── dig-resolver.ts  DigResolver：cloudflare-pal dig 服务直查权威 NS
 │   ├── db/                  drizzle schema + db instance
 │   ├── middlewares/         auth gate
 │   └── index.ts             Hono app（导出 AppType 供前端 RPC）
@@ -92,8 +98,8 @@ acme-hub/
 │   │   └── acrux-ui/        从 @acrux 注册表安装的源码副本，按上游对待
 │   └── utils/api.ts         hc<AppType>("/")
 ├── drizzle/                 自动生成的迁移 SQL（勿手改）
-├── wrangler.jsonc           bindings：DB / kv / ASSETS / API_TOKEN
-└── CLAUDE.md                给 AI 编程助手看的项目说明
+├── wrangler.jsonc           bindings：DB / kv / ASSETS / API_TOKEN + vars.CFPAL_ENDPOINT
+└── AGENTS.md                给 AI 编程助手看的项目说明
 ```
 
 ## API 路由
@@ -108,6 +114,7 @@ acme-hub/
 | `/api/certificates`      | 标准 CRUD                             |
 | `/api/dns-credentials`   | 标准 CRUD；删除时级联置空 domains.dnsCredentialId |
 | `/api/domains`           | 标准 CRUD                             |
+| `/api/acme/v1/cert` `POST` | 对外 ACME 端点：Bearer token 认证，签发/续期证书（SSE 播报可选） |
 
 ## 部署
 
