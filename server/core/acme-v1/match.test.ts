@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allowMatch, findAllowMatch } from "./match";
+import { allowMatch, findAllowMatch, certAllowed } from "./match";
 
 describe("findAllowMatch", () => {
   it("fulltext 命中返回规则", () => {
@@ -77,5 +77,33 @@ describe("allowMatch", () => {
     expect(allowMatch("a.com", rules)).toBe(true);
     expect(allowMatch("sub.b.com", rules)).toBe(true);
     expect(allowMatch("c.com", rules)).toBe(false);
+  });
+});
+
+describe("certAllowed", () => {
+  const rules = [{ type: "suffix" as const, pattern: "example.com" }];
+
+  it("primary + 全部 alt 通过 → true", () => {
+    expect(certAllowed("a.example.com", ["b.example.com"], rules)).toBe(true);
+  });
+
+  it("primary 通过但某 alt 越权 → false", () => {
+    expect(certAllowed("a.example.com", ["b.other.com"], rules)).toBe(false);
+  });
+
+  it("primary 越权 → false", () => {
+    expect(certAllowed("a.other.com", ["b.example.com"], rules)).toBe(false);
+  });
+
+  it("无 alt，仅 primary 通过 → true", () => {
+    expect(certAllowed("a.example.com", [], rules)).toBe(true);
+  });
+
+  it("空规则 → false", () => {
+    expect(certAllowed("a.example.com", [], [])).toBe(false);
+  });
+
+  it("wildcard SAN 通过 suffix", () => {
+    expect(certAllowed("example.com", ["*.example.com"], rules)).toBe(true);
   });
 });

@@ -3,13 +3,53 @@ import { HttpErr } from "@acrux/server";
 import { crypto } from "@geektr/acme-dns01";
 import { db, schema } from "@server/db";
 import type { Client } from "@server/db/schema";
-import { allowMatch, findAllowMatch } from "./match";
+import { allowMatch, findAllowMatch, certAllowed } from "./match";
 import { decide } from "./decide";
 import { needNewKeypair } from "./san";
 import { resolveDnsZone } from "./resolve";
 import { runAcme } from "./issue";
 import type { DomainZone } from "./issue";
-import type { CertEmit, CertResult } from "./schema";
+import type { CertEmit, CertResult, CertListItem } from "./schema";
+
+// 枚举客户端可访问证书：同 ACME 账户下、primary + 全部 alt 域名均通过 allow 校验的证书元数据。
+export async function listCerts(client: Client): Promise<CertListItem[]> {
+  if (!client.acmeAccountId) return [];
+  const rows = await db
+    .select({
+      id: schema.certificates.id,
+      domain: schema.certificates.domain,
+      alt: schema.certificates.alt,
+      cer: schema.certificates.cer,
+      createdAt: schema.certificates.createdAt,
+      updatedAt: schema.certificates.updatedAt,
+    })
+    .from(schema.certificates)
+    .where(eq(schema.certificates.acmeAccountId, client.acmeAccountId))
+    .orderBy(desc(schema.certificates.createdAt));
+
+  return rows
+    .filter((r) =>
+      certAllowed(r.domain, (r.alt as string[]) ?? [], client.allow),
+    )
+    .map((r) => {
+      let notAfter: string | null = null;
+      if (r.cer) {
+        try {
+          notAfter = crypto.readCertificateInfo(r.cer).notAfter.toISOString();
+        } catch {
+          notAfter = null;
+        }
+      }
+      return {
+        id: r.id,
+        domain: r.domain,
+        alt: (r.alt as string[]) ?? [],
+        notAfter,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      };
+    });
+}
 
 export async function requestCert(
   client: Client,

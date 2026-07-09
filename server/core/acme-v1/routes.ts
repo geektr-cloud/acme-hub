@@ -4,10 +4,15 @@ import { zValidator } from "@hono/zod-validator";
 import { requireClient } from "./middleware";
 import type { AcmeV1Env } from "./middleware";
 import * as v1Schema from "./schema";
-import { requestCert } from "./core";
+import { requestCert, listCerts } from "./core";
 
 export const acmeV1Routes = new Hono<AcmeV1Env>()
   .use("*", requireClient)
+  .get("/certs", async (c) => {
+    const client = c.get("client");
+    const certs = await listCerts(client);
+    return c.json({ certs });
+  })
   .post("/cert", zValidator("json", v1Schema.cert.body), async (c) => {
     const client = c.get("client");
     const { domains } = c.req.valid("json");

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton, useFormModel } from "@/components/acrux-ui/actions";
 import {
@@ -24,10 +24,14 @@ import { Button } from "@/components/ui/button";
 import { useClientStore } from "@/stores/clients";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { client } from "@/utils/api";
-import { Edit, RefreshCw } from "@lucide/vue";
+import type { acmeV1 } from "@server/core/acme-v1";
+import { Edit, RefreshCw, ShieldCheck } from "@lucide/vue";
+import { useRouter } from "vue-router";
+import { Spinner } from "@/components/ui/spinner";
 import ClientEditor from "./ClientEditor.vue";
 
 const id = useRouteParams<string>("id");
+const router = useRouter();
 const { useRemoval } = useClientStore();
 const { update } = useFormModel(ClientEditor);
 
@@ -38,6 +42,39 @@ const [item, status, reload] = useAsyncState(fetchItem, undefined, {
   immediate: true,
 });
 const removal = useRemoval(id);
+
+// 匹配到的证书：走对外端点，用该客户端自己的 Bearer token 鉴权（同 allow 规则过滤）。
+const certs = ref<acmeV1.CertListItem[]>([]);
+const certsLoading = ref(false);
+const certsError = ref<string | null>(null);
+
+async function loadCerts(token: string | undefined) {
+  if (!token) {
+    certs.value = [];
+    return;
+  }
+  certsLoading.value = true;
+  certsError.value = null;
+  try {
+    const res = await client.api.acme.v1.certs.$get(
+      {},
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    certs.value = (await res.json()).certs;
+  } catch (e) {
+    certsError.value = e instanceof Error ? e.message : String(e);
+    certs.value = [];
+  } finally {
+    certsLoading.value = false;
+  }
+}
+
+watch(
+  () => item.value?.token,
+  (token) => void loadCerts(token),
+  { immediate: true },
+);
 
 const { useAll: useAllAccounts } = useAcmeAccountStore();
 const [accounts] = useAllAccounts();
@@ -57,6 +94,7 @@ const rotateToken = async () => {
   });
   if (res.ok) {
     item.value = await res.json();
+    void loadCerts(item.value?.token);
   }
 };
 
@@ -143,6 +181,76 @@ watch(id, () => void reload());
               <CopyBtn :value="item.id" />
             </DataItem>
           </DataView>
+        </CardContent>
+      </Card>
+
+      <Card class="mt-4">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <ShieldCheck class="size-4" />
+            证书列表
+            <Badge v-if="!certsLoading" variant="secondary">{{
+              certs.length
+            }}</Badge>
+          </CardTitle>
+          <CardAction>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-7"
+              title="刷新"
+              :disabled="certsLoading || !item.token"
+              @click="loadCerts(item!.token)"
+            >
+              <RefreshCw class="size-3.5" />
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <div
+            v-if="certsLoading"
+            class="flex items-center gap-2 text-sm text-muted-foreground"
+          >
+            <Spinner class="size-4" />
+            加载中…
+          </div>
+          <div v-else-if="certsError" class="text-sm text-destructive">
+            加载失败：{{ certsError }}
+          </div>
+          <div v-else-if="!item.token" class="text-sm text-zinc-500">
+            客户端无 token，无法查询证书。
+          </div>
+          <div v-else-if="certs.length === 0" class="text-sm text-zinc-500">
+            无匹配证书。
+          </div>
+          <div v-else class="flex flex-col gap-2">
+            <div
+              v-for="cert in certs"
+              :key="cert.id"
+              class="flex cursor-pointer flex-col gap-1.5 border p-3 transition-colors hover:bg-muted/50"
+              @click="router.push(`/certificates/${cert.id}`)"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <code class="font-mono text-sm">{{ cert.domain }}</code>
+                <span class="shrink-0 text-xs text-zinc-500">
+                  <template v-if="cert.notAfter">
+                    到期
+                    <DateFormatter :value="cert.notAfter" format="distance" />
+                  </template>
+                  <span v-else>—</span>
+                </span>
+              </div>
+              <div v-if="cert.alt.length" class="flex flex-wrap gap-1">
+                <Badge
+                  v-for="d in cert.alt"
+                  :key="d"
+                  variant="secondary"
+                  class="font-mono text-xs"
+                  >{{ d }}</Badge
+                >
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </template>

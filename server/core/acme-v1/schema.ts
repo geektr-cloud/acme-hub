@@ -18,6 +18,24 @@ export const cert = {
 
 export type CertResult = z.infer<typeof cert.response>;
 
+// 枚举客户端可访问证书：仅元数据，不含私钥/证书链（key/cer/ca 经 POST /cert 获取）。
+export const certList = {
+  response: z.object({
+    certs: z.array(
+      z.object({
+        id: z.string(),
+        domain: z.string(),
+        alt: z.array(z.string()),
+        notAfter: z.string().nullable(),
+        createdAt: z.string(),
+        updatedAt: z.string(),
+      }),
+    ),
+  }),
+};
+
+export type CertListItem = z.infer<typeof certList.response>["certs"][number];
+
 export type CertEvent =
   | { type: "start"; domains: string[]; client: string }
   | {

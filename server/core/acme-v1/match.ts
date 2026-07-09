@@ -24,3 +24,13 @@ export function findAllowMatch(
 export function allowMatch(domain: string, rules: AllowRule[]): boolean {
   return findAllowMatch(domain, rules) !== null;
 }
+
+// 证书授权：primary + 全部 alt（SAN）均需通过 allow 才算该客户端可访问。
+export function certAllowed(
+  primary: string,
+  alt: string[],
+  rules: AllowRule[],
+): boolean {
+  const names = new Set<string>([primary, ...alt]);
+  return [...names].every((d) => allowMatch(d, rules));
+}
