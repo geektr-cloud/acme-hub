@@ -14,6 +14,7 @@ import (
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
+	"github.com/caddyserver/caddy/v2/modules/caddytls"
 	"github.com/caddyserver/certmagic"
 )
 
@@ -28,8 +29,9 @@ type AcmeHubProvider struct {
 	Endpoint string `json:"endpoint,omitempty"`
 	Token    string `json:"token,omitempty"`
 
-	cfg   ProfileConfig `json:"-"`
-	cache *certCache    `json:"-"`
+	cfg       ProfileConfig     `json:"-"`
+	cache     *certCache        `json:"-"`
+	wildcards map[string]string `json:"-"` // suffix → wildcard domain, e.g. ".acmehub.anitya.cn" → "*.acmehub.anitya.cn"
 }
 
 func (AcmeHubProvider) CaddyModule() caddy.ModuleInfo {
@@ -39,7 +41,7 @@ func (AcmeHubProvider) CaddyModule() caddy.ModuleInfo {
 	}
 }
 
-func (p *AcmeHubProvider) Provision(_ caddy.Context) error {
+func (p *AcmeHubProvider) Provision(ctx caddy.Context) error {
 	if p.Endpoint != "" && p.Token != "" {
 		p.cfg = ProfileConfig{Endpoint: p.Endpoint, Token: p.Token}
 	} else if p.Endpoint != "" || p.Token != "" {
@@ -56,7 +58,41 @@ func (p *AcmeHubProvider) Provision(_ caddy.Context) error {
 		p.cfg = cfg
 	}
 	p.cache = newCertCache()
+	p.wildcards = make(map[string]string)
+	p.detectWildcards(ctx)
 	return nil
+}
+
+func (p *AcmeHubProvider) detectWildcards(ctx caddy.Context) {
+	tlsApp, err := ctx.App("tls")
+	if err != nil {
+		return
+	}
+	app, ok := tlsApp.(*caddytls.TLS)
+	if !ok || app == nil || app.Automation == nil {
+		return
+	}
+	for _, policy := range app.Automation.Policies {
+		for _, subj := range policy.SubjectsRaw {
+			if strings.HasPrefix(subj, "*.") {
+				suffix := "." + strings.TrimPrefix(subj, "*.")
+				p.wildcards[suffix] = subj
+			}
+		}
+	}
+}
+
+func (p *AcmeHubProvider) resolveDomain(sni string) string {
+	for suffix, wildcard := range p.wildcards {
+		if !strings.HasSuffix(sni, suffix) {
+			continue
+		}
+		prefix := strings.TrimSuffix(sni, suffix)
+		if prefix != "" && !strings.Contains(prefix, ".") {
+			return wildcard
+		}
+	}
+	return sni
 }
 
 func (p *AcmeHubProvider) GetCertificate(_ context.Context, hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
@@ -69,7 +105,7 @@ func (p *AcmeHubProvider) GetCertificate(_ context.Context, hello *tls.ClientHel
 		return cert, nil
 	}
 
-	cert, maxAge, err := p.fetchCert(name)
+	cert, maxAge, err := p.fetchCert(p.resolveDomain(name))
 	if err != nil {
 		return nil, err
 	}
