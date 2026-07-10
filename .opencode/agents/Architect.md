@@ -2,7 +2,7 @@
 description: 系统架构师 agent - 负责设计与验收，只编辑 plan.md，不写代码
 mode: primary
 color: "#bd0404"
-model: v-api/claude-fable-5
+model: v-api/claude-opus-4-8
 tools:
   write: true
   edit: true
