@@ -16,12 +16,13 @@ xcaddy build --with github.com/geektr-cloud/caddy-acme-hub=./integrations/caddy
 
 ## Caddyfile 配置
 
-基本用法：
+基本用法（推荐）：
 
 ```caddyfile
 {
 	tls {
 		get_certificate acmehub
+		renewal_window_ratio 0.01
 	}
 }
 ```
@@ -32,6 +33,7 @@ xcaddy build --with github.com/geektr-cloud/caddy-acme-hub=./integrations/caddy
 {
 	tls {
 		get_certificate acmehub @prod
+		renewal_window_ratio 0.01
 	}
 }
 ```
@@ -45,6 +47,7 @@ xcaddy build --with github.com/geektr-cloud/caddy-acme-hub=./integrations/caddy
 			endpoint https://acme.geektr.cloud
 			token <bearer-token>
 		}
+		renewal_window_ratio 0.01
 	}
 }
 ```
@@ -58,6 +61,7 @@ xcaddy build --with github.com/geektr-cloud/caddy-acme-hub=./integrations/caddy
 			endpoint https://acme.geektr.cloud
 			token <bearer-token>
 		}
+		renewal_window_ratio 0.01
 	}
 }
 ```
@@ -70,6 +74,7 @@ xcaddy build --with github.com/geektr-cloud/caddy-acme-hub=./integrations/caddy
     "tls": {
       "automation": {
         "policies": [{
+          "renewal_window_ratio": 0.01,
           "get_certificate": [{
             "via": "acmehub",
             "profile": "default"
@@ -89,6 +94,7 @@ xcaddy build --with github.com/geektr-cloud/caddy-acme-hub=./integrations/caddy
     "tls": {
       "automation": {
         "policies": [{
+          "renewal_window_ratio": 0.01,
           "get_certificate": [{
             "via": "acmehub",
             "endpoint": "https://acme.geektr.cloud",
@@ -142,12 +148,34 @@ staging:
 
 在 acme-hub 的 `clients` 表创建一个 client，`token` 填 Caddy 侧使用的值，`allow` 填对应域名规则（`fulltext` 或 `suffix`）。
 
-## 缓存
+## 缓存与续签
 
-- 从 acme-hub 响应的 `Cache-Control: max-age=N` 解析过期时间
-- `max-age=0` 或无 `Cache-Control` 不缓存
-- 过期后下次 TLS 握手重新拉取
-- 同一 acme-hub 实例的多个 `get_certificate acmehub` 指令共享缓存
+**设计原则**：插件只听 acme-hub 的 `Cache-Control` 响应头，不做自适应缓存。续签完全由 acme-hub 管理。
+
+### 为什么推荐 `renewal_window_ratio 0.01`
+
+Caddy 默认的 `renewal_window_ratio` 是 `0.3333`（证书剩余 33% 寿命时触发续期）。但这会与 acme-hub 的续签逻辑冲突：
+
+- acme-hub 通过 `Cache-Control: max-age=N` 控制插件缓存时间
+- Caddy 的 certmagic 在证书剩余 33% 时驱逐缓存，强制调插件重新拉取
+- 如果 acme-hub 的 `Cache-Control` 设置的缓存时间比 certmagic 驱逐时间长，certmagic 会提前驱逐，导致不必要的 API 调用
+
+设置 `renewal_window_ratio 0.01` 后：
+- certmagic 仅在证书剩余 1% 寿命时才驱逐（90 天证书 → 剩余不到 1 天）
+- acme-hub 通过 `Cache-Control` 完全控制缓存时间
+- 插件只在缓存过期时调 API，certmagic 基本不干预
+
+### 缓存流程
+
+```
+1. 插件请求证书 → acme-hub 返回证书 + Cache-Control: max-age=N
+2. 插件缓存 N 秒
+3. 缓存过期 → 下次 TLS 握手调 API
+4. acme-hub 决定返回缓存证书或续签后的新证书
+5. 重复
+```
+
+`max-age=0` 或无 `Cache-Control` 时不缓存，每次都调 API。
 
 ## 模块 ID
 
