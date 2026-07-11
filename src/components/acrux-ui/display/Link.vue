@@ -17,18 +17,8 @@ const WrapTag = props.variant === "raw" ? "p" : Badge;
 </script>
 
 <template>
-  <WrapTag
-    v-if="href"
-    v-bind="$attrs"
-    class="max-w-full flex items-center gap-1"
-    variant="link"
-  >
-    <a
-      :href="href"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="inline-flex items-center gap-1"
-    >
+  <WrapTag v-if="href" v-bind="$attrs" class="max-w-full flex items-center gap-1" variant="link">
+    <a :href="href" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1">
       <Icon :as="ExternalLink" />
       <code class="inline-block truncate min-w-0">{{ label ?? href }}</code>
     </a>

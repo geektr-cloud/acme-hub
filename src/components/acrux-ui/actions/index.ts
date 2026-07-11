@@ -12,9 +12,7 @@ export interface ConfirmPopoverOptions<T extends BaseData> {
   useRemoval: UseRemoval<T>;
 }
 
-export const useConfirmPopover = <T extends BaseData>(
-  opts: ConfirmPopoverOptions<T>,
-) => {
+export const useConfirmPopover = <T extends BaseData>(opts: ConfirmPopoverOptions<T>) => {
   const id = ref<BaseId | undefined>();
   const anchor = ref<ReferenceElement>();
   const isOpen = ref(false);
@@ -23,9 +21,7 @@ export const useConfirmPopover = <T extends BaseData>(
     setup() {
       const removal = opts.useRemoval(id);
       const message = computed(() =>
-        typeof opts.message === "function"
-          ? opts.message(removal[2][0].value)
-          : opts.message,
+        typeof opts.message === "function" ? opts.message(removal[2][0].value) : opts.message,
       );
 
       return () =>
@@ -52,12 +48,7 @@ export const useConfirmPopover = <T extends BaseData>(
   };
 
   const onGlobalClick = (event: Event) => {
-    if (
-      anchor.value &&
-      anchor.value instanceof Node &&
-      anchor.value.contains(event.target as Node)
-    )
-      return;
+    if (anchor.value && anchor.value instanceof Node && anchor.value.contains(event.target as Node)) return;
     close();
   };
 

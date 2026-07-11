@@ -33,19 +33,9 @@ onMounted(async () => {
     <Card class="cursor-pointer" @click="onClose?.()">
       <CardContent class="flex flex-col items-center gap-2 p-4">
         <p v-if="error" class="text-destructive text-sm">{{ error }}</p>
-        <div v-else-if="!svg" class="text-muted-foreground text-sm">
-          生成中...
-        </div>
-        <div
-          v-else
-          v-html="svg"
-          class="bg-white p-2 rounded [&>svg]:block [&>svg]:w-64 [&>svg]:h-64"
-        />
-        <p
-          class="text-xs font-mono break-all max-w-[256px] text-muted-foreground"
-        >
-          {{ value }}
-        </p>
+        <div v-else-if="!svg" class="text-muted-foreground text-sm">生成中...</div>
+        <div v-else v-html="svg" class="bg-white p-2 rounded [&>svg]:block [&>svg]:w-64 [&>svg]:h-64" />
+        <p class="text-xs font-mono break-all max-w-[256px] text-muted-foreground">{{ value }}</p>
       </CardContent>
     </Card>
   </VueFinalModal>

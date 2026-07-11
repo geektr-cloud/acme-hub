@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import Button from "@/components/ui/button/Button.vue";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { IconBtn } from "@/components/acrux-ui/base";
 import { PopoverClose } from "reka-ui";
@@ -39,11 +35,7 @@ const remove = () =>
     <PopoverContent side="left" class="w-auto">
       <div class="flex flex-row items-center gap-2">
         <div>{{ confirm }}</div>
-        <IconBtn
-          variant="secondary"
-          :disabled="status.loading"
-          @click="void remove()"
-        >
+        <IconBtn variant="secondary" :disabled="status.loading" @click="void remove()">
           <Check v-if="!status.loading" />
           <Spinner v-else />
         </IconBtn>
