@@ -195,3 +195,35 @@ export const certEvents = sqliteTable(
 
 export type CertEvent = typeof certEvents.$inferSelect;
 export type NewCertEvent = typeof certEvents.$inferInsert;
+
+// 全局配置：KV 存储，key 为配置项名称，value 为配置值。
+export const settings = sqliteTable("Setting", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+  createdAt: text("createdAt").notNull().default(now),
+  updatedAt: text("updatedAt")
+    .notNull()
+    .default(now)
+    .$onUpdate(() => now),
+});
+
+export type Setting = typeof settings.$inferSelect;
+export type NewSetting = typeof settings.$inferInsert;
+
+// 消费者操作日志：审计消费者操作（获取证书、获取全部证书）。
+export const consumerLogs = sqliteTable(
+  "ConsumerLog",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    consumerId: text("consumerId").notNull().default(""),
+    event: text("event").notNull().default(""),
+    description: text("description").notNull().default(""),
+    createdAt: text("createdAt").notNull().default(now),
+  },
+  (t) => [index("ConsumerLog_consumerId_idx").on(t.consumerId)],
+);
+
+export type ConsumerLog = typeof consumerLogs.$inferSelect;
+export type NewConsumerLog = typeof consumerLogs.$inferInsert;

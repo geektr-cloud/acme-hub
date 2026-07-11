@@ -8,6 +8,8 @@ import { dnsCredentialRoutes } from "@server/core/dns-credentials/routes";
 import { domainRoutes } from "@server/core/domains/routes";
 import { authRoutes } from "@server/core/auth/routes";
 import { pkiRoutes } from "@server/core/pki/routes";
+import { settingRoutes } from "@server/core/settings/routes";
+import { logRoutes } from "@server/core/logs/routes";
 import { requireAuth } from "@server/middlewares/auth";
 import { ErrorHandler } from "@acrux/server";
 
@@ -19,6 +21,8 @@ export const app = new Hono()
   .route("/api/certificates", certificateRoutes)
   .route("/api/dns-credentials", dnsCredentialRoutes)
   .route("/api/domains", domainRoutes)
+  .route("/api/settings", settingRoutes)
+  .route("/api/logs", logRoutes)
   .route("/pki/v1", pkiRoutes);
 
 export type AppType = typeof app;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { decideByInfo, renewAt, cacheControl } from "./decide";
-import { RENEW_RATIO } from "./config";
+import { DEFAULT_RENEW_RATIO } from "./config";
 
 const d = (iso: string) => new Date(iso);
 
@@ -52,11 +52,12 @@ describe("decideByInfo", () => {
     expect(result.mode).toBe("renew");
   });
 
-  it("边界：恰好在 RENEW_RATIO 位置 → renew", () => {
+  it("边界：恰好在 DEFAULT_RENEW_RATIO 位置 → renew", () => {
     const notBefore = d("2025-01-01T00:00:00Z");
     const notAfter = d("2025-01-01T10:00:00Z");
     const lifetime = notAfter.getTime() - notBefore.getTime();
-    const boundary = notBefore.getTime() + Math.floor(lifetime * RENEW_RATIO);
+    const boundary =
+      notBefore.getTime() + Math.floor(lifetime * DEFAULT_RENEW_RATIO);
     const result = decideByInfo({ notBefore, notAfter }, boundary);
     expect(result.mode).toBe("renew");
   });
@@ -69,16 +70,18 @@ describe("renewAt", () => {
       notAfter: d("2025-01-01T10:00:00Z"),
     };
     const result = renewAt(info);
-    const expected = info.notBefore.getTime() + 10 * 3600_000 * RENEW_RATIO;
+    const expected =
+      info.notBefore.getTime() + 10 * 3600_000 * DEFAULT_RENEW_RATIO;
     expect(result.getTime()).toBe(expected);
   });
 
-  it("RENEW_RATIO=2/3 验证：notBefore=0, notAfter=90天 → renewAt===60天", () => {
+  it("DEFAULT_RENEW_RATIO=0.66 验证：notBefore=0, notAfter=90天 → renewAt===59.4天", () => {
     const notBefore = d("2025-01-01T00:00:00Z");
     const notAfter = new Date(notBefore.getTime() + 90 * 86400_000);
     const result = renewAt({ notBefore, notAfter });
-    const expected60d = notBefore.getTime() + 60 * 86400_000;
-    expect(result.getTime()).toBe(expected60d);
+    const expected59_4d =
+      notBefore.getTime() + 90 * 86400_000 * DEFAULT_RENEW_RATIO;
+    expect(result.getTime()).toBe(expected59_4d);
   });
 });
 

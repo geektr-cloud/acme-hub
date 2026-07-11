@@ -21,6 +21,8 @@ const accountsActive = isActive("/acme-accounts");
 const certsActive = isActive("/certificates");
 const dnsCredentialsActive = isActive("/dns-credentials");
 const domainsActive = isActive("/domains");
+const settingsActive = isActive("/settings");
+const logsActive = isActive("/logs");
 
 const onLogout = async () => {
   await auth.logout();
@@ -59,6 +61,12 @@ const onLogout = async () => {
         </RouterLink>
         <RouterLink to="/domains" :class="navLinkClass(domainsActive)">
           域名
+        </RouterLink>
+        <RouterLink to="/settings" :class="navLinkClass(settingsActive)">
+          全局配置
+        </RouterLink>
+        <RouterLink to="/logs" :class="navLinkClass(logsActive)">
+          日志
         </RouterLink>
       </nav>
       <div class="ml-auto">

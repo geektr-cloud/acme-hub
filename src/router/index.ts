@@ -10,6 +10,8 @@ import DnsCredentialPage from "../views/dns-credential/DnsCredentialPage.vue";
 import DnsCredentialDetailPage from "../views/dns-credential/DnsCredentialDetailPage.vue";
 import DomainPage from "../views/domain/DomainPage.vue";
 import DomainDetailPage from "../views/domain/DomainDetailPage.vue";
+import SettingPage from "../views/setting/SettingPage.vue";
+import LogPage from "../views/log/LogPage.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -73,6 +75,16 @@ const router = createRouter({
       path: "/domains/:id",
       name: "domain-detail",
       component: DomainDetailPage,
+    },
+    {
+      path: "/settings",
+      name: "settings",
+      component: SettingPage,
+    },
+    {
+      path: "/logs",
+      name: "logs",
+      component: LogPage,
     },
   ],
 });

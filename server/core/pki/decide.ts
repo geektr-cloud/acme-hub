@@ -1,14 +1,17 @@
 import { crypto } from "@geektr/acme-dns01";
-import { RENEW_RATIO } from "./config";
+import { DEFAULT_RENEW_RATIO } from "./config";
 
 export type Decision =
   | { mode: "cache"; notAfter: Date; renewAt: Date }
   | { mode: "renew"; reason: string }
   | { mode: "issue"; reason: string };
 
-export function renewAt(info: { notBefore: Date; notAfter: Date }): Date {
+export function renewAt(
+  info: { notBefore: Date; notAfter: Date },
+  ratio = DEFAULT_RENEW_RATIO,
+): Date {
   const lifetime = info.notAfter.getTime() - info.notBefore.getTime();
-  return new Date(info.notBefore.getTime() + lifetime * RENEW_RATIO);
+  return new Date(info.notBefore.getTime() + lifetime * ratio);
 }
 
 export function cacheControl(renewAt: Date, now = Date.now()): string {
@@ -22,6 +25,7 @@ export function cacheControl(renewAt: Date, now = Date.now()): string {
 export function decideByInfo(
   info: { notBefore: Date; notAfter: Date },
   now: number,
+  ratio = DEFAULT_RENEW_RATIO,
 ): Decision {
   const notAfter = info.notAfter.getTime();
   const notBefore = info.notBefore.getTime();
@@ -36,16 +40,21 @@ export function decideByInfo(
   }
 
   const elapsed = now - notBefore;
-  if (elapsed / lifetime >= RENEW_RATIO) {
+  if (elapsed / lifetime >= ratio) {
     return { mode: "renew", reason: "certificate past renewal threshold" };
   }
 
-  return { mode: "cache", notAfter: info.notAfter, renewAt: renewAt(info) };
+  return {
+    mode: "cache",
+    notAfter: info.notAfter,
+    renewAt: renewAt(info, ratio),
+  };
 }
 
 export function decide(
   existingCer: string | null | undefined,
   now: number = Date.now(),
+  ratio = DEFAULT_RENEW_RATIO,
 ): Decision {
   if (!existingCer) {
     return { mode: "issue", reason: "no existing certificate" };
@@ -53,7 +62,7 @@ export function decide(
 
   try {
     const info = crypto.readCertificateInfo(existingCer);
-    return decideByInfo(info, now);
+    return decideByInfo(info, now, ratio);
   } catch {
     return { mode: "renew", reason: "certificate parse failed" };
   }

@@ -13,6 +13,7 @@ import { certHashOf, lockIdOf } from "./hash";
 import { pickPrimaryDomain } from "@server/utils/domain";
 import { appendEvent, tailEvents } from "./events";
 import { acquire, release } from "../resource-locks/service";
+import { getRenewWindowRatio } from "../settings/service";
 import { v7 as uuidv7 } from "uuid";
 import type { CertEmit, CertResult, CertListItem } from "./schema";
 
@@ -78,6 +79,7 @@ export async function listCerts(consumer: Consumer): Promise<CertListItem[]> {
 export async function matchCert(
   consumer: Consumer,
   requestedDomains: string[],
+  ratio: number,
 ): Promise<{
   cert: typeof schema.certificates.$inferSelect;
   decision: ReturnType<typeof decide>;
@@ -113,7 +115,7 @@ export async function matchCert(
 
   if (!best) return null;
 
-  const decision = decide(best.certificate);
+  const decision = decide(best.certificate, Date.now(), ratio);
   return { cert: best, decision };
 }
 
@@ -193,6 +195,8 @@ export async function requestCert(
   ctx: { waitUntil(p: Promise<unknown>): void },
   emit?: CertEmit,
 ): Promise<{ result: CertResult; cacheControl: string }> {
+  const ratio = await getRenewWindowRatio();
+
   const send = async (e: Parameters<CertEmit>[0]) => {
     await emit?.(e);
   };
@@ -217,11 +221,11 @@ export async function requestCert(
   if (!account.creds?.privateKey || !account.creds?.accountUrl)
     throw HttpErr(412, "ACME account not registered");
 
-  const match = await matchCert(consumer, domains);
+  const match = await matchCert(consumer, domains, ratio);
 
   if (match && match.decision.mode === "cache") {
     const info = crypto.readCertificateInfo(match.cert.certificate!);
-    const ra = renewAt(info);
+    const ra = renewAt(info, ratio);
     await send({
       type: "decision",
       mode: "reuse",
@@ -261,7 +265,7 @@ export async function requestCert(
       }
 
       await send({ type: "completed", result });
-      const ra = renewAt(info);
+      const ra = renewAt(info, ratio);
       return { result, cacheControl: cacheControl(ra) };
     }
   }

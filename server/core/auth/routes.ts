@@ -4,6 +4,7 @@ import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
 import { zValidator } from "@hono/zod-validator";
 import { HttpErr } from "@acrux/server";
 import * as schema from "./schema";
+import { getAdminPassword } from "../settings/service";
 
 const COOKIE_NAME = "auth";
 const COOKIE_VALUE = "ok";
@@ -11,7 +12,8 @@ const COOKIE_VALUE = "ok";
 export const authRoutes = new Hono()
   .post("/login", zValidator("json", schema.login.body), async (c) => {
     const { username, password } = c.req.valid("json");
-    if (username !== "root" || password !== env.API_TOKEN) {
+    const adminPassword = await getAdminPassword();
+    if (username !== "root" || password !== adminPassword) {
       throw HttpErr(401, "invalid credentials");
     }
     await setSignedCookie(c, COOKIE_NAME, COOKIE_VALUE, env.API_TOKEN, {

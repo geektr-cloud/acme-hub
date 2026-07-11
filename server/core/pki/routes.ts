@@ -8,12 +8,21 @@ import type { PkiEnv } from "./middleware";
 import * as pkiSchema from "./schema";
 import { requestCert, listCerts, matchCert } from "./core";
 import { renewAt, cacheControl } from "./decide";
+import { getRenewWindowRatio } from "../settings/service";
+import { recordLog } from "../logs/service";
 
 export const pkiRoutes = new Hono<PkiEnv>()
   .use("*", requireConsumer)
   .get("/certificates", async (c) => {
     const consumer = c.get("consumer");
     const certs = await listCerts(consumer);
+    c.executionCtx.waitUntil(
+      recordLog({
+        consumerId: consumer.id,
+        event: "certificate.list",
+        description: `获取证书列表，共 ${certs.length} 个`,
+      }),
+    );
     return c.json({ certs });
   })
   .get("/certificates/lookup", async (c) => {
@@ -22,13 +31,14 @@ export const pkiRoutes = new Hono<PkiEnv>()
     if (!domains || domains.length === 0) {
       throw HttpErr(400, "at least one domain parameter is required");
     }
-    const match = await matchCert(consumer, domains);
+    const ratio = await getRenewWindowRatio();
+    const match = await matchCert(consumer, domains, ratio);
     if (!match || !match.cert.certificate) {
       throw HttpErr(404, "no matching certificate found");
     }
     const { cert: certRow } = match;
     const info = crypto.readCertificateInfo(certRow.certificate);
-    const ra = renewAt(info);
+    const ra = renewAt(info, ratio);
     c.header("Cache-Control", cacheControl(ra));
     return c.json({
       commonName: certRow.commonName,
@@ -44,6 +54,13 @@ export const pkiRoutes = new Hono<PkiEnv>()
   .post("/certificates/issue", zValidator("json", pkiSchema.cert.body), (c) => {
     const consumer = c.get("consumer");
     const { domains } = c.req.valid("json");
+    c.executionCtx.waitUntil(
+      recordLog({
+        consumerId: consumer.id,
+        event: "certificate.issue",
+        description: `获取证书，SAN: ${domains.join(", ")}`,
+      }),
+    );
     const accept = c.req.header("Accept") ?? "";
     if (accept.includes("text/event-stream")) {
       return streamSSE(c, async (stream) => {
