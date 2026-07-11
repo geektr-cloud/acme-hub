@@ -1,4 +1,4 @@
-import { sqliteTable, text, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 
@@ -86,13 +86,20 @@ export const certificates = sqliteTable(
     csr: text("csr").notNull().default(""),
     // 签发该证书的 ACME 账户。null = 未关联。
     acmeAccountId: text("acmeAccountId"),
+    // 签发去重键：同 account + 同 SAN 集合复用同一 Certificate 行。
+    certHash: text("certHash").notNull().default(""),
     createdAt: text("createdAt").notNull().default(now),
     updatedAt: text("updatedAt")
       .notNull()
       .default(now)
       .$onUpdate(() => now),
   },
-  (t) => [index("Certificate_acmeAccountId_idx").on(t.acmeAccountId)],
+  (t) => [
+    index("Certificate_acmeAccountId_idx").on(t.acmeAccountId),
+    uniqueIndex("Certificate_certHash_uniq")
+      .on(t.certHash)
+      .where(sql`certHash != ''`),
+  ],
 );
 
 export type Certificate = typeof certificates.$inferSelect;
@@ -148,3 +155,40 @@ export const domains = sqliteTable(
 
 export type Domain = typeof domains.$inferSelect;
 export type NewDomain = typeof domains.$inferInsert;
+
+// 资源锁：签发流程的域名级互斥锁，防止并发签发同一域名。
+export const resourceLocks = sqliteTable("ResourceLock", {
+  id: text("id").primaryKey(),
+  owner: text("owner").notNull(),
+  remark: text("remark").notNull().default(""),
+  expiresAt: text("expiresAt").notNull(),
+  createdAt: text("createdAt").notNull().default(now),
+});
+
+export type ResourceLock = typeof resourceLocks.$inferSelect;
+export type NewResourceLock = typeof resourceLocks.$inferInsert;
+
+// 签发事件日志：供 SSE tail 推流签发进度。
+export const certEvents = sqliteTable(
+  "CertEvent",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    runId: text("runId").notNull().default(""),
+    certHash: text("certHash").notNull(),
+    event: text("event", { mode: "json" }).notNull().$type<{
+      type: string;
+      message?: string;
+      [key: string]: unknown;
+    }>(),
+    createdAt: text("createdAt").notNull().default(now),
+  },
+  (t) => [
+    index("CertEvent_runId_idx").on(t.runId),
+    index("CertEvent_certHash_idx").on(t.certHash),
+  ],
+);
+
+export type CertEvent = typeof certEvents.$inferSelect;
+export type NewCertEvent = typeof certEvents.$inferInsert;

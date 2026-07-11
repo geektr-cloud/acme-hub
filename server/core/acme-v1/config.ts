@@ -1,1 +1,1 @@
-export const RENEW_RATIO = 0.5;
+export const RENEW_RATIO = 2 / 3;

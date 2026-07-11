@@ -4,7 +4,10 @@ import { HttpErr } from "@acrux/server";
 import { db, schema } from "@server/db";
 import type { Client } from "@server/db/schema";
 
-export type AcmeV1Env = { Variables: { client: Client } };
+export type AcmeV1Env = {
+  Variables: { client: Client };
+  Bindings: Cloudflare.Env;
+};
 
 export const requireClient = createMiddleware<AcmeV1Env>(async (c, next) => {
   const header = c.req.header("Authorization");
