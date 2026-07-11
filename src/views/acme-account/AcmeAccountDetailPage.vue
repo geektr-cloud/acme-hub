@@ -60,7 +60,7 @@ watch(id, () => void reload());
             </Button>
             <RemovalButton
               :ctx="removal"
-              confirm="确定删除此账户？引用它的客户端与证书会解除关联。"
+              confirm="确定删除此账户？引用它的消费方与证书会解除关联。"
             />
           </CardAction>
         </CardHeader>

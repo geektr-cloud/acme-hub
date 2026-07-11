@@ -2,24 +2,24 @@ import { Hono } from "hono";
 import { env } from "cloudflare:workers";
 
 import { acmeAccountRoutes } from "@server/core/acme-accounts/routes";
-import { clientRoutes } from "@server/core/clients/routes";
+import { consumerRoutes } from "@server/core/consumers/routes";
 import { certificateRoutes } from "@server/core/certificates/routes";
 import { dnsCredentialRoutes } from "@server/core/dns-credentials/routes";
 import { domainRoutes } from "@server/core/domains/routes";
 import { authRoutes } from "@server/core/auth/routes";
-import { acmeV1Routes } from "@server/core/acme-v1/routes";
+import { pkiRoutes } from "@server/core/pki/routes";
 import { requireAuth } from "@server/middlewares/auth";
 import { ErrorHandler } from "@acrux/server";
 
 export const app = new Hono()
   .use("/api/*", requireAuth)
   .route("/api/auth", authRoutes)
-  .route("/api/acme/v1", acmeV1Routes)
   .route("/api/acme-accounts", acmeAccountRoutes)
-  .route("/api/clients", clientRoutes)
+  .route("/api/consumers", consumerRoutes)
   .route("/api/certificates", certificateRoutes)
   .route("/api/dns-credentials", dnsCredentialRoutes)
-  .route("/api/domains", domainRoutes);
+  .route("/api/domains", domainRoutes)
+  .route("/pki/v1", pkiRoutes);
 
 export type AppType = typeof app;
 

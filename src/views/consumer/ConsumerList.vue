@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useClientStore } from "@/stores/clients";
+import { useConsumerStore } from "@/stores/consumers";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
-import ClientEditor from "./ClientEditor.vue";
+import ConsumerEditor from "./ConsumerEditor.vue";
 import Button from "@/components/ui/button/Button.vue";
 import { useConfirmPopover, useFormModel } from "@/components/acrux-ui/actions";
 import { CopyBtn, DateFormatter } from "@/components/acrux-ui/display";
@@ -19,9 +19,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const { useAll, useRemoval } = useClientStore();
+const { useAll, useRemoval } = useConsumerStore();
 const [items] = useAll();
-const { update } = useFormModel(ClientEditor);
+const { update } = useFormModel(ConsumerEditor);
 const router = useRouter();
 
 const { useAll: useAllAccounts } = useAcmeAccountStore();
@@ -32,7 +32,7 @@ const accountName = computed(() => (id: string | null) => {
 });
 
 const removal = useConfirmPopover({
-  message: "确定删除该客户端？",
+  message: "确定删除该消费方？",
   useRemoval,
 });
 </script>
@@ -41,7 +41,7 @@ const removal = useConfirmPopover({
   <div v-if="items.length > 0">
     <removal.ConfirmPopover />
     <Table>
-      <TableCaption>共 {{ items.length }} 个客户端</TableCaption>
+      <TableCaption>共 {{ items.length }} 个消费方</TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead>名称</TableHead>
@@ -57,7 +57,7 @@ const removal = useConfirmPopover({
           v-for="row in items"
           :key="row.id"
           class="cursor-pointer"
-          @click="router.push(`/clients/${row.id}`)"
+          @click="router.push(`/consumers/${row.id}`)"
         >
           <TableCell>{{ row.name || "(未命名)" }}</TableCell>
           <TableCell class="text-zinc-400">{{ row.allow.length }}</TableCell>

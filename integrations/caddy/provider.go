@@ -115,18 +115,21 @@ func (p *AcmeHubProvider) GetCertificate(_ context.Context, hello *tls.ClientHel
 }
 
 type certResponse struct {
-	Key      string `json:"key"`
-	Cer      string `json:"cer"`
-	Ca       string `json:"ca"`
-	Domain   string `json:"domain"`
-	NotAfter string `json:"notAfter"`
+	CommonName  string   `json:"commonName"`
+	Sans        []string `json:"sans"`
+	PrivateKey  string   `json:"privateKey"`
+	Certificate string   `json:"certificate"`
+	Chain       string   `json:"chain"`
+	Fullchain   string   `json:"fullchain"`
+	NotBefore   string   `json:"notBefore"`
+	NotAfter    string   `json:"notAfter"`
 }
 
 func (p *AcmeHubProvider) fetchCert(domain string) (*tls.Certificate, time.Duration, error) {
 	body, _ := json.Marshal(map[string]any{
 		"domains": []string{domain},
 	})
-	endpoint := strings.TrimRight(p.cfg.Endpoint, "/") + "/api/acme/v1/cert"
+	endpoint := strings.TrimRight(p.cfg.Endpoint, "/") + "/pki/v1/certificates/issue"
 
 	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(body))
 	if err != nil {
@@ -151,7 +154,7 @@ func (p *AcmeHubProvider) fetchCert(domain string) (*tls.Certificate, time.Durat
 		return nil, 0, fmt.Errorf("acmehub: decode response: %w", err)
 	}
 
-	tlsCert, err := tls.X509KeyPair([]byte(cr.Cer), []byte(cr.Key))
+	tlsCert, err := tls.X509KeyPair([]byte(cr.Fullchain), []byte(cr.PrivateKey))
 	if err != nil {
 		return nil, 0, fmt.Errorf("acmehub: x509 key pair: %w", err)
 	}

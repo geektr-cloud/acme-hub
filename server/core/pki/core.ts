@@ -2,8 +2,8 @@ import { desc, eq, inArray } from "drizzle-orm";
 import { HttpErr } from "@acrux/server";
 import { crypto } from "@geektr/acme-dns01";
 import { db, schema } from "@server/db";
-import type { Client } from "@server/db/schema";
-import { allowMatch, findAllowMatch, certAllowed } from "./match";
+import type { Consumer } from "@server/db/schema";
+import { allowMatch, certAllowed } from "./match";
 import { decide, renewAt, cacheControl } from "./decide";
 import { assertValidDomainName, pickBestCert } from "./coverage";
 import { resolveDnsZone } from "./resolve";
@@ -18,38 +18,56 @@ import type { CertEmit, CertResult, CertListItem } from "./schema";
 
 const ISSUE_TTL_MS = 120_000;
 
-export async function listCerts(client: Client): Promise<CertListItem[]> {
-  if (!client.acmeAccountId) return [];
+function buildCertResult(
+  certRow: typeof schema.certificates.$inferSelect,
+): CertResult {
+  const info = crypto.readCertificateInfo(certRow.certificate);
+  return {
+    commonName: certRow.commonName,
+    sans: (certRow.sans as string[]) ?? [],
+    privateKey: certRow.privateKey,
+    certificate: certRow.certificate,
+    chain: certRow.chain,
+    fullchain: certRow.certificate + "\n" + certRow.chain,
+    notBefore: info.notBefore.toISOString(),
+    notAfter: info.notAfter.toISOString(),
+  };
+}
+
+export async function listCerts(consumer: Consumer): Promise<CertListItem[]> {
+  if (!consumer.acmeAccountId) return [];
   const rows = await db
     .select({
       id: schema.certificates.id,
-      domain: schema.certificates.domain,
-      alt: schema.certificates.alt,
-      cer: schema.certificates.cer,
+      commonName: schema.certificates.commonName,
+      sans: schema.certificates.sans,
+      certificate: schema.certificates.certificate,
       createdAt: schema.certificates.createdAt,
       updatedAt: schema.certificates.updatedAt,
     })
     .from(schema.certificates)
-    .where(eq(schema.certificates.acmeAccountId, client.acmeAccountId))
+    .where(eq(schema.certificates.acmeAccountId, consumer.acmeAccountId))
     .orderBy(desc(schema.certificates.createdAt));
 
   return rows
     .filter((r) =>
-      certAllowed(r.domain, (r.alt as string[]) ?? [], client.allow),
+      certAllowed(r.commonName, (r.sans as string[]) ?? [], consumer.allow),
     )
     .map((r) => {
       let notAfter: string | null = null;
-      if (r.cer) {
+      if (r.certificate) {
         try {
-          notAfter = crypto.readCertificateInfo(r.cer).notAfter.toISOString();
+          notAfter = crypto
+            .readCertificateInfo(r.certificate)
+            .notAfter.toISOString();
         } catch {
           notAfter = null;
         }
       }
       return {
         id: r.id,
-        domain: r.domain,
-        alt: (r.alt as string[]) ?? [],
+        commonName: r.commonName,
+        sans: (r.sans as string[]) ?? [],
         notAfter,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
@@ -58,7 +76,7 @@ export async function listCerts(client: Client): Promise<CertListItem[]> {
 }
 
 export async function matchCert(
-  client: Client,
+  consumer: Consumer,
   requestedDomains: string[],
 ): Promise<{
   cert: typeof schema.certificates.$inferSelect;
@@ -66,27 +84,28 @@ export async function matchCert(
 } | null> {
   for (const d of requestedDomains) {
     assertValidDomainName(d);
-    if (!allowMatch(d, client.allow)) {
-      throw HttpErr(403, `域名 ${d} 未通过 allow 校验`);
+    if (!allowMatch(d, consumer.allow)) {
+      throw HttpErr(403, `domain ${d} is not permitted by allow rules`);
     }
   }
 
-  if (!client.acmeAccountId) return null;
+  if (!consumer.acmeAccountId) return null;
 
   const certs = await db
     .select()
     .from(schema.certificates)
-    .where(eq(schema.certificates.acmeAccountId, client.acmeAccountId))
+    .where(eq(schema.certificates.acmeAccountId, consumer.acmeAccountId))
     .orderBy(desc(schema.certificates.createdAt));
 
   const eligible = certs.filter((c) =>
-    certAllowed(c.domain, (c.alt as string[]) ?? [], client.allow),
+    certAllowed(c.commonName, (c.sans as string[]) ?? [], consumer.allow),
   );
 
   const best = pickBestCert(
     eligible.map((c) => ({
       ...c,
-      alt: (c.alt as string[]) ?? [],
+      domain: c.commonName,
+      alt: (c.sans as string[]) ?? [],
       createdAt: c.createdAt,
     })),
     requestedDomains,
@@ -94,7 +113,7 @@ export async function matchCert(
 
   if (!best) return null;
 
-  const decision = decide(best.cer);
+  const decision = decide(best.certificate);
   return { cert: best, decision };
 }
 
@@ -135,30 +154,33 @@ async function runIssue(
     await db
       .update(schema.certificates)
       .set({
-        key: result.key,
+        privateKey: result.key,
         csr: result.csr,
-        cer: result.cer,
-        ca: result.ca,
-        domain: pickPrimaryDomain(domains),
-        alt: domains,
+        certificate: result.cer,
+        chain: result.ca,
+        commonName: pickPrimaryDomain(domains),
+        sans: domains,
         certHash,
       })
       .where(eq(schema.certificates.id, certificateId));
 
     const issuedInfo = crypto.readCertificateInfo(result.cer);
     await send({
-      type: "done",
+      type: "completed",
       result: {
-        domain: domains[0]!,
-        key: result.key,
-        cer: result.cer,
-        ca: result.ca,
+        commonName: domains[0]!,
+        sans: domains,
+        privateKey: result.key,
+        certificate: result.cer,
+        chain: result.ca,
+        fullchain: result.cer + "\n" + result.ca,
+        notBefore: issuedInfo.notBefore.toISOString(),
         notAfter: issuedInfo.notAfter.toISOString(),
       },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await appendEvent(runId, certHash, { type: "error", message });
+    await appendEvent(runId, certHash, { type: "failed", message });
     throw err;
   } finally {
     await release(runId);
@@ -166,7 +188,7 @@ async function runIssue(
 }
 
 export async function requestCert(
-  client: Client,
+  consumer: Consumer,
   domains: string[],
   ctx: { waitUntil(p: Promise<unknown>): void },
   emit?: CertEmit,
@@ -175,71 +197,53 @@ export async function requestCert(
     await emit?.(e);
   };
 
-  await send({ type: "start", domains, client: client.name });
+  await send({ type: "started", commonName: domains[0]!, sans: domains });
 
   for (const d of domains) {
     assertValidDomainName(d);
-    if (!allowMatch(d, client.allow)) {
-      throw HttpErr(403, `域名 ${d} 未通过 allow 校验`);
-    }
-    const matchedRule = findAllowMatch(d, client.allow);
-    if (matchedRule) {
-      await send({
-        type: "allow-matched",
-        domain: d,
-        rule: { type: matchedRule.type, pattern: matchedRule.pattern },
-      });
+    if (!allowMatch(d, consumer.allow)) {
+      throw HttpErr(403, `domain ${d} is not permitted by allow rules`);
     }
   }
 
-  if (!client.acmeAccountId) throw HttpErr(412, "客户端未绑定 ACME 账户");
+  if (!consumer.acmeAccountId)
+    throw HttpErr(412, "consumer is not bound to an ACME account");
   const [account] = await db
     .select()
     .from(schema.acmeAccounts)
-    .where(eq(schema.acmeAccounts.id, client.acmeAccountId))
+    .where(eq(schema.acmeAccounts.id, consumer.acmeAccountId))
     .limit(1);
-  if (!account) throw HttpErr(412, "ACME 账户不存在");
+  if (!account) throw HttpErr(412, "ACME account not found");
   if (!account.creds?.privateKey || !account.creds?.accountUrl)
-    throw HttpErr(412, "ACME 账户未注册");
+    throw HttpErr(412, "ACME account not registered");
 
-  await send({
-    type: "account",
-    id: account.id,
-    name: account.name,
-    acmeUrl: account.acmeUrl,
-  });
-
-  const match = await matchCert(client, domains);
+  const match = await matchCert(consumer, domains);
 
   if (match && match.decision.mode === "cache") {
-    const info = crypto.readCertificateInfo(match.cert.cer!);
+    const info = crypto.readCertificateInfo(match.cert.certificate!);
     const ra = renewAt(info);
-    await send({ type: "cache-hit", notAfter: info.notAfter.toISOString() });
-    const result: CertResult = {
-      domain: match.cert.domain,
-      key: match.cert.key,
-      cer: match.cert.cer!,
-      ca: match.cert.ca!,
-      notAfter: info.notAfter.toISOString(),
-    };
-    await send({ type: "done", result });
+    await send({
+      type: "decision",
+      mode: "reuse",
+      reason: "certificate valid",
+    });
+    const result = buildCertResult(match.cert);
+    await send({ type: "completed", result });
     return { result, cacheControl: cacheControl(ra) };
   }
 
-  if (match && match.decision.mode === "renew" && match.cert.cer) {
-    const info = crypto.readCertificateInfo(match.cert.cer);
+  if (match && match.decision.mode === "renew" && match.cert.certificate) {
+    const info = crypto.readCertificateInfo(match.cert.certificate);
     if (info.notAfter.getTime() > Date.now()) {
-      await send({ type: "decision", mode: "renew", reason: "证书需续签" });
-      const result: CertResult = {
-        domain: match.cert.domain,
-        key: match.cert.key,
-        cer: match.cert.cer,
-        ca: match.cert.ca,
-        notAfter: info.notAfter.toISOString(),
-      };
+      await send({
+        type: "decision",
+        mode: "renew",
+        reason: "certificate needs renewal",
+      });
+      const result = buildCertResult(match.cert);
 
       const renewRunId = uuidv7();
-      const renewCertHash = await certHashOf(client.acmeAccountId!, domains);
+      const renewCertHash = await certHashOf(consumer.acmeAccountId!, domains);
       const renewLockIds = await Promise.all(domains.map((d) => lockIdOf(d)));
       const locked = await acquire(
         renewLockIds,
@@ -250,13 +254,13 @@ export async function requestCert(
       if (locked) {
         ctx.waitUntil(
           runIssue(renewRunId, match.cert.id, renewCertHash, account, domains, {
-            key: match.cert.key,
+            key: match.cert.privateKey,
             csr: match.cert.csr,
           }).catch(() => {}),
         );
       }
 
-      await send({ type: "done", result });
+      await send({ type: "completed", result });
       const ra = renewAt(info);
       return { result, cacheControl: cacheControl(ra) };
     }
@@ -264,15 +268,19 @@ export async function requestCert(
 
   await send({
     type: "decision",
-    mode: match ? match.decision.mode : "issue",
+    mode: match
+      ? match.decision.mode === "cache"
+        ? "reuse"
+        : match.decision.mode
+      : "issue",
     reason: match
       ? match.decision.mode === "renew"
         ? match.decision.reason
-        : "证书需续签"
-      : "无匹配证书",
+        : "certificate needs renewal"
+      : "no matching certificate",
   });
 
-  const certHash = await certHashOf(client.acmeAccountId, domains);
+  const certHash = await certHashOf(consumer.acmeAccountId, domains);
   const runId = uuidv7();
   const lockIds = await Promise.all(domains.map((d) => lockIdOf(d)));
   const locked = await acquire(
@@ -299,9 +307,9 @@ export async function requestCert(
         .insert(schema.certificates)
         .values({
           certHash,
-          domain: pickPrimaryDomain(domains),
-          alt: domains,
-          acmeAccountId: client.acmeAccountId,
+          commonName: pickPrimaryDomain(domains),
+          sans: domains,
+          acmeAccountId: consumer.acmeAccountId,
         })
         .onConflictDoNothing()
         .returning({ id: schema.certificates.id });
@@ -318,8 +326,8 @@ export async function requestCert(
     }
 
     const existing =
-      match?.cert?.key && match?.cert?.csr
-        ? { key: match.cert.key, csr: match.cert.csr }
+      match?.cert?.privateKey && match?.cert?.csr
+        ? { key: match.cert.privateKey, csr: match.cert.csr }
         : null;
 
     const issuePromise = runIssue(
@@ -344,7 +352,7 @@ export async function requestCert(
         for (const row of rows) {
           await send(row.event as Parameters<CertEmit>[0]);
           cursor = row.id;
-          if (row.event.type === "done" || row.event.type === "error") {
+          if (row.event.type === "completed" || row.event.type === "failed") {
             terminal = true;
             timedOut = false;
           }
@@ -356,9 +364,9 @@ export async function requestCert(
 
       if (timedOut) {
         await send({
-          type: "error",
+          type: "failed",
           status: 503,
-          message: "签发超时，请重试",
+          message: "issuance timed out, please retry",
         });
       }
     } else {
@@ -384,7 +392,7 @@ export async function requestCert(
           for (const row of rows) {
             await send(row.event as Parameters<CertEmit>[0]);
             cursor = row.id;
-            if (row.event.type === "done" || row.event.type === "error") {
+            if (row.event.type === "completed" || row.event.type === "failed") {
               terminal = true;
             }
           }
@@ -395,11 +403,11 @@ export async function requestCert(
       } else {
         while (Date.now() < deadline) {
           const [cert] = await db
-            .select({ cer: schema.certificates.cer })
+            .select({ certificate: schema.certificates.certificate })
             .from(schema.certificates)
             .where(eq(schema.certificates.certHash, certHash))
             .limit(1);
-          if (cert?.cer) break;
+          if (cert?.certificate) break;
           await new Promise((r) => setTimeout(r, 1000));
         }
       }
@@ -407,11 +415,11 @@ export async function requestCert(
       const deadline = Date.now() + ISSUE_TTL_MS;
       while (Date.now() < deadline) {
         const [cert] = await db
-          .select({ cer: schema.certificates.cer })
+          .select({ certificate: schema.certificates.certificate })
           .from(schema.certificates)
           .where(eq(schema.certificates.certHash, certHash))
           .limit(1);
-        if (cert?.cer) break;
+        if (cert?.certificate) break;
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
@@ -423,30 +431,23 @@ export async function requestCert(
     .where(eq(schema.certificates.certHash, certHash))
     .limit(1);
 
-  if (cert?.cer) {
-    const info = crypto.readCertificateInfo(cert.cer);
-    const result: CertResult = {
-      domain: cert.domain,
-      key: cert.key,
-      cer: cert.cer,
-      ca: cert.ca,
-      notAfter: info.notAfter.toISOString(),
-    };
+  if (cert?.certificate) {
+    const result = buildCertResult(cert);
     return { result, cacheControl: "max-age=0, must-revalidate" };
   }
 
   const allEvents = await tailEvents(checkRunId, null);
   const lastError = [...allEvents]
     .reverse()
-    .find((e) => e.event.type === "error");
+    .find((e) => e.event.type === "failed");
   if (lastError) {
     const evt = lastError.event as {
-      type: "error";
+      type: "failed";
       status?: number;
       message?: string;
     };
-    throw HttpErr(502, evt.message ?? "签发失败");
+    throw HttpErr(502, evt.message ?? "issuance failed");
   }
 
-  throw HttpErr(503, "签发进行中，请重试");
+  throw HttpErr(503, "issuance in progress, please retry");
 }

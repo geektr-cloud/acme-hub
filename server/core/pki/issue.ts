@@ -1,8 +1,4 @@
-import {
-  Client as AcmeClient,
-  crypto as acmeCrypto,
-  type AcmeAutoEventMap,
-} from "@geektr/acme-dns01";
+import { Client as AcmeClient, crypto as acmeCrypto } from "@geektr/acme-dns01";
 import { env } from "cloudflare:workers";
 import { HttpErr } from "@acrux/server";
 import { createDnsClient } from "@server/utils/dns-clients";
@@ -55,8 +51,12 @@ export async function runAcme(
   function getDns(domain: string): { dns: DnsClient; zoneName: string } {
     const bare = domain.replace(/^\*\./, "");
     const dz = zoneByDomain.get(domain) ?? zoneByDomain.get(`*.${bare}`);
-    if (!dz) throw HttpErr(412, `域名 ${domain} 未解析到 DNS zone`);
-    if (!dz.cred.creds) throw HttpErr(412, "DNS 凭据数据为空");
+    if (!dz)
+      throw HttpErr(
+        412,
+        `domain ${domain} could not be resolved to a DNS zone`,
+      );
+    if (!dz.cred.creds) throw HttpErr(412, "DNS credential data is empty");
     let dns = dnsByCredId.get(dz.cred.id);
     if (!dns) {
       dns = createDnsClient(dz.cred.provider, dz.cred.creds);
@@ -74,7 +74,6 @@ export async function runAcme(
   if (existing?.key && existing?.csr) {
     keyStr = existing.key;
     csrStr = existing.csr;
-    await send({ type: "keygen", reused: true });
   } else {
     const keyPem = await acmeCrypto.createPrivateEcdsaKey("P-256");
     const [, csrPem] = await acmeCrypto.createCsr(
@@ -83,7 +82,6 @@ export async function runAcme(
     );
     keyStr = decode(keyPem);
     csrStr = decode(csrPem);
-    await send({ type: "keygen", reused: false });
   }
 
   const remark = `acmehub-${await keyDigest(keyStr)}`;
@@ -106,52 +104,39 @@ export async function runAcme(
     resolver,
   });
 
+  const seenBare = new Set<string>();
+  const cleanedBare = new Set<string>();
+
   const op = client.auto({
     csr: csrStr,
     termsOfServiceAgreed: true,
     challengeCreateFn: async (_authz, challenge, keyAuth) => {
-      if (challenge.type !== "dns-01") throw HttpErr(500, "仅支持 dns-01");
+      if (challenge.type !== "dns-01")
+        throw HttpErr(500, "only dns-01 is supported");
       const bare = _authz.identifier.value.replace(/^\*\./, "");
+      const isNew = !seenBare.has(bare);
+      seenBare.add(bare);
+      if (isNew) await send({ type: "challenge", domain: bare, status: "preparing" });
       const fqdn = `_acme-challenge.${bare}`;
       const { dns, zoneName } = getDns(bare);
       await dns.ensureTxt(zoneName, fqdn, keyAuth, remark);
-      await send({ type: "dns-add", fqdn });
+      if (isNew) await send({ type: "challenge", domain: bare, status: "ready" });
     },
     challengeRemoveFn: async (_authz, _challenge, keyAuth) => {
       const bare = _authz.identifier.value.replace(/^\*\./, "");
+      if (!cleanedBare.has(bare)) {
+        cleanedBare.add(bare);
+        await send({ type: "challenge", domain: bare, status: "cleaning" });
+      }
       const fqdn = `_acme-challenge.${bare}`;
       try {
         const { dns, zoneName } = getDns(bare);
         await dns.removeTxt(zoneName, fqdn, keyAuth);
-        await send({ type: "dns-remove", fqdn });
       } catch (e) {
         console.warn("DNS challenge cleanup failed:", e);
       }
     },
   });
-
-  const FORWARDED: (keyof AcmeAutoEventMap)[] = [
-    "order:create",
-    "order:created",
-    "order:finalize",
-    "challenge:verify",
-    "challenge:complete",
-    "challenge:error",
-    "dns:txt-check",
-    "dns:txt-found",
-    "dns:txt-miss",
-    "status:poll",
-    "status:wait",
-  ];
-  for (const name of FORWARDED) {
-    op.addEventListener(name, (ev) => {
-      void send({
-        type: "acme-progress",
-        event: name,
-        detail: ev.detail ?? {},
-      });
-    });
-  }
 
   const fullChain = await op;
 

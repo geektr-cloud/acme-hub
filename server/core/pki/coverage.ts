@@ -7,11 +7,11 @@ export function isWildcard(d: string): boolean {
 export function assertValidDomainName(d: string): void {
   if (d.includes("*")) {
     if (!d.startsWith("*.") || d.indexOf("*", 1) !== -1) {
-      throw HttpErr(400, `非法通配域名: ${d}`);
+      throw HttpErr(400, `invalid wildcard domain: ${d}`);
     }
     const rest = d.slice(2);
     if (!rest || rest.includes("*")) {
-      throw HttpErr(400, `非法通配域名: ${d}`);
+      throw HttpErr(400, `invalid wildcard domain: ${d}`);
     }
   }
 }

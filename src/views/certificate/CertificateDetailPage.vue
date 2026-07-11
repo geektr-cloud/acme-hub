@@ -46,9 +46,9 @@ const account = computed(() => {
 
 // PEM 块定义，便于统一渲染。
 const pemBlocks = computed(() => [
-  { label: "私钥 (key)", value: item.value?.key ?? "" },
-  { label: "证书 (cer)", value: item.value?.cer ?? "" },
-  { label: "证书链 (ca)", value: item.value?.ca ?? "" },
+  { label: "私钥", value: item.value?.privateKey ?? "" },
+  { label: "证书", value: item.value?.certificate ?? "" },
+  { label: "证书链", value: item.value?.chain ?? "" },
   { label: "CSR", value: item.value?.csr ?? "" },
 ]);
 
@@ -65,7 +65,7 @@ watch(id, () => void reload());
       <Card>
         <CardHeader>
           <CardTitle class="text-base font-mono">{{
-            item.domain || "证书详情"
+            item.commonName || "证书详情"
           }}</CardTitle>
           <CardAction>
             <RemovalButton
@@ -77,11 +77,11 @@ watch(id, () => void reload());
         <CardContent>
           <DataView>
             <DataItem label="通用名称">
-              <code class="font-mono">{{ item.domain || "(无)" }}</code>
+              <code class="font-mono">{{ item.commonName || "(无)" }}</code>
             </DataItem>
             <DataItem label="SAN">
-              <span v-if="item.alt.length" class="inline-flex flex-wrap gap-1">
-                <Badge v-for="d in item.alt" :key="d" variant="outline">{{
+              <span v-if="item.sans.length" class="inline-flex flex-wrap gap-1">
+                <Badge v-for="d in item.sans" :key="d" variant="outline">{{
                   d
                 }}</Badge>
               </span>

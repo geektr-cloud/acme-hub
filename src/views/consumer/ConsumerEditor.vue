@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/field";
 import { InputGroup, InputGroupInput } from "@/components/ui/input-group";
 import { Select } from "@/components/acrux-ui/fields";
-import { useClientStore } from "@/stores/clients";
+import { useConsumerStore } from "@/stores/consumers";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "@lucide/vue";
@@ -20,7 +20,7 @@ const props = defineProps<{ id: string | undefined }>();
 const emit = defineEmits<{ (e: "close"): void }>();
 
 const id = computed(() => props.id);
-const { useUpsert } = useClientStore();
+const { useUpsert } = useConsumerStore();
 const [form, issues, status, submit] = useUpsert(id);
 
 // ACME 账户候选池。
@@ -49,7 +49,7 @@ const onSave = async () => {
 
 <template>
   <FieldSet class="w-2xl">
-    <FieldLegend>{{ id ? "编辑" : "新建" }}客户端</FieldLegend>
+    <FieldLegend>{{ id ? "编辑" : "新建" }}消费方</FieldLegend>
     <FieldGroup>
       <Field :data-invalid="issues.errors('name').length > 0">
         <FieldLabel for="name">名称</FieldLabel>

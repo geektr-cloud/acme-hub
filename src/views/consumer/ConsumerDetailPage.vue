@@ -30,31 +30,31 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useClientStore } from "@/stores/clients";
+import { useConsumerStore } from "@/stores/consumers";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { client } from "@/utils/api";
-import type { acmeV1 } from "@server/core/acme-v1";
+import type { pki } from "@server/core/pki";
 import { Edit, Plus, RefreshCw, ShieldCheck } from "@lucide/vue";
 import { useRouter } from "vue-router";
 import { Spinner } from "@/components/ui/spinner";
-import ClientEditor from "./ClientEditor.vue";
+import ConsumerEditor from "./ConsumerEditor.vue";
 import RequestCertModal from "@/views/certificate/RequestCertModal.vue";
 
 const id = useRouteParams<string>("id");
 const router = useRouter();
-const { useRemoval } = useClientStore();
-const { update } = useFormModel(ClientEditor);
+const { useRemoval } = useConsumerStore();
+const { update } = useFormModel(ConsumerEditor);
 
 const fetchItem = useHonoApi(() =>
-  client.api.clients[":id"].$get({ param: { id: id.value } }),
+  client.api.consumers[":id"].$get({ param: { id: id.value } }),
 );
 const [item, status, reload] = useAsyncState(fetchItem, undefined, {
   immediate: true,
 });
 const removal = useRemoval(id);
 
-// 匹配到的证书：走对外端点，用该客户端自己的 Bearer token 鉴权（同 allow 规则过滤）。
-const certs = ref<acmeV1.CertListItem[]>([]);
+// 匹配到的证书：走对外端点，用该消费方自己的 Bearer token 鉴权（同 allow 规则过滤）。
+const certs = ref<pki.CertListItem[]>([]);
 const certsLoading = ref(false);
 const certsError = ref<string | null>(null);
 
@@ -66,7 +66,7 @@ async function loadCerts(token: string | undefined) {
   certsLoading.value = true;
   certsError.value = null;
   try {
-    const res = await client.api.acme.v1.certs.$get(
+    const res = await client.pki.v1.certificates.$get(
       {},
       { headers: { Authorization: `Bearer ${token}` } },
     );
@@ -145,7 +145,7 @@ function onRequestCert() {
 onUnmounted(destroyCertModal);
 
 const rotateToken = async () => {
-  const res = await client.api.clients[":id"]["rotate-token"].$post({
+  const res = await client.api.consumers[":id"]["rotate-token"].$post({
     param: { id: id.value },
   });
   if (res.ok) {
@@ -167,7 +167,7 @@ watch(id, () => void reload());
       <Card>
         <CardHeader>
           <CardTitle class="text-base">{{
-            item.name || "客户端详情"
+            item.name || "消费方详情"
           }}</CardTitle>
           <CardAction>
             <Button variant="secondary" @click="update(item!.id)">
@@ -175,7 +175,7 @@ watch(id, () => void reload());
             </Button>
             <RemovalButton
               :ctx="removal"
-              confirm="确定删除此客户端？不可恢复。"
+              confirm="确定删除此消费方？不可恢复。"
             />
           </CardAction>
         </CardHeader>
@@ -288,7 +288,7 @@ watch(id, () => void reload());
             加载失败：{{ certsError }}
           </div>
           <div v-else-if="!item.token" class="text-sm text-zinc-500">
-            客户端无 token，无法查询证书。
+            消费方无 token，无法查询证书。
           </div>
           <div v-else-if="certs.length === 0" class="text-sm text-zinc-500">
             无匹配证书。
@@ -301,7 +301,7 @@ watch(id, () => void reload());
               @click="router.push(`/certificates/${cert.id}`)"
             >
               <div class="flex items-center justify-between gap-2">
-                <code class="font-mono text-sm">{{ cert.domain }}</code>
+                <code class="font-mono text-sm">{{ cert.commonName }}</code>
                 <span class="shrink-0 text-xs text-zinc-500">
                   <template v-if="cert.notAfter">
                     到期
@@ -310,9 +310,9 @@ watch(id, () => void reload());
                   <span v-else>—</span>
                 </span>
               </div>
-              <div v-if="cert.alt.length" class="flex flex-wrap gap-1">
+              <div v-if="cert.sans.length" class="flex flex-wrap gap-1">
                 <Badge
-                  v-for="d in cert.alt"
+                  v-for="d in cert.sans"
                   :key="d"
                   variant="secondary"
                   class="font-mono text-xs"

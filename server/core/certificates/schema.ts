@@ -5,14 +5,14 @@ import type { Certificate } from "@server/db/schema";
 // ── field definitions ─────────────────────────────────────────────────────────
 
 const id = z.uuid();
-const key = z.string();
-const domain = z.string();
-const alt = z.array(z.string());
+const privateKey = z.string();
+const commonName = z.string();
+const sans = z.array(z.string());
 // `z.json()` 的静态类型是递归 JSON 联合，既破坏 `assert<Equals>`（drizzle 列为 unknown），
 // 又会撑爆 Hono 的 RPC 类型推断——固定为 unknown。
 const config = z.json() as unknown as z.ZodType<unknown>;
-const ca = z.string();
-const cer = z.string();
+const chain = z.string();
+const certificate_ = z.string();
 const csr = z.string();
 const acmeAccountId = z.uuid().nullable();
 const certHash = z.string();
@@ -23,12 +23,12 @@ const updatedAt = z.string();
 
 export const certificate = z.object({
   id,
-  key,
-  domain,
-  alt,
+  privateKey,
+  commonName,
+  sans,
   config,
-  ca,
-  cer,
+  chain,
+  certificate: certificate_,
   csr,
   acmeAccountId,
   certHash,
@@ -40,12 +40,12 @@ export type { Certificate };
 
 export const newItem = (): Certificate => ({
   id: "",
-  key: "",
-  domain: "",
-  alt: [],
+  privateKey: "",
+  commonName: "",
+  sans: [],
   config: null,
-  ca: "",
-  cer: "",
+  chain: "",
+  certificate: "",
   csr: "",
   acmeAccountId: null,
   certHash: "",

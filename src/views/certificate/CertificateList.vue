@@ -47,10 +47,12 @@ const removal = useConfirmPopover({
           class="cursor-pointer"
           @click="router.push(`/certificates/${row.id}`)"
         >
-          <TableCell class="font-mono">{{ row.domain || "(无)" }}</TableCell>
+          <TableCell class="font-mono">{{
+            row.commonName || "(无)"
+          }}</TableCell>
           <TableCell>
-            <Badge v-if="row.alt.length" variant="secondary">{{
-              row.alt.length
+            <Badge v-if="row.sans.length" variant="secondary">{{
+              row.sans.length
             }}</Badge>
             <span v-else class="text-zinc-500">—</span>
           </TableCell>

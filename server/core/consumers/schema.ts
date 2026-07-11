@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type Equals, assert } from "tsafe";
-import type { Client } from "@server/db/schema";
+import type { Consumer } from "@server/db/schema";
 
 // ── field definitions ─────────────────────────────────────────────────────────
 
@@ -8,7 +8,6 @@ const id = z.uuid();
 const name = z.string().nonempty("名称不能为空");
 const description = z.string();
 const token = z.string();
-// 域名匹配规则：fulltext = 全文精确匹配，suffix = 后缀匹配。
 const allowRule = z.object({
   type: z.enum(["fulltext", "suffix"]),
   pattern: z.string().nonempty("匹配模式不能为空"),
@@ -20,7 +19,7 @@ const updatedAt = z.string();
 
 // ── base schema ───────────────────────────────────────────────────────────────
 
-export const client = z.object({
+export const consumer = z.object({
   id,
   name,
   description,
@@ -30,11 +29,11 @@ export const client = z.object({
   createdAt,
   updatedAt,
 });
-assert<Equals<z.infer<typeof client>, Client>>();
-export type { Client };
+assert<Equals<z.infer<typeof consumer>, Consumer>>();
+export type { Consumer };
 export type AllowRule = z.infer<typeof allowRule>;
 
-export const newItem = (): Client => ({
+export const newItem = (): Consumer => ({
   id: "",
   name: "",
   description: "",
@@ -48,13 +47,13 @@ export const newItem = (): Client => ({
 // ── api schemas ───────────────────────────────────────────────────────────────
 
 export const create = {
-  body: client
+  body: consumer
     .omit({ id: true, createdAt: true, updatedAt: true })
     .extend({ token: z.string().optional() }),
 };
 
 export const upsert = {
-  body: client
+  body: consumer
     .extend({ id: z.union([id, z.literal("")]).optional() })
     .omit({ createdAt: true, updatedAt: true }),
 };

@@ -2,8 +2,8 @@ import { createRouter, createWebHistory } from "vue-router";
 import LoginPage from "../views/auth/LoginPage.vue";
 import CertificatePage from "../views/certificate/CertificatePage.vue";
 import CertificateDetailPage from "../views/certificate/CertificateDetailPage.vue";
-import ClientPage from "../views/client/ClientPage.vue";
-import ClientDetailPage from "../views/client/ClientDetailPage.vue";
+import ConsumerPage from "../views/consumer/ConsumerPage.vue";
+import ConsumerDetailPage from "../views/consumer/ConsumerDetailPage.vue";
 import AcmeAccountPage from "../views/acme-account/AcmeAccountPage.vue";
 import AcmeAccountDetailPage from "../views/acme-account/AcmeAccountDetailPage.vue";
 import DnsCredentialPage from "../views/dns-credential/DnsCredentialPage.vue";
@@ -22,7 +22,7 @@ const router = createRouter({
     },
     {
       path: "/",
-      redirect: "/clients",
+      redirect: "/consumers",
     },
     {
       path: "/certificates",
@@ -35,14 +35,14 @@ const router = createRouter({
       component: CertificateDetailPage,
     },
     {
-      path: "/clients",
-      name: "clients",
-      component: ClientPage,
+      path: "/consumers",
+      name: "consumers",
+      component: ConsumerPage,
     },
     {
-      path: "/clients/:id",
-      name: "client-detail",
-      component: ClientDetailPage,
+      path: "/consumers/:id",
+      name: "consumer-detail",
+      component: ConsumerDetailPage,
     },
     {
       path: "/acme-accounts",

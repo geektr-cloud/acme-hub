@@ -33,9 +33,9 @@ export const acmeAccounts = sqliteTable("AcmeAccount", {
 export type AcmeAccount = typeof acmeAccounts.$inferSelect;
 export type NewAcmeAccount = typeof acmeAccounts.$inferInsert;
 
-// 客户端：持 token 调用本服务的消费方，allow 限定其可申请的域名范围。
-export const clients = sqliteTable(
-  "Client",
+// 消费方：持 token 调用本服务的外部主体，allow 限定其可申请的域名范围。
+export const consumers = sqliteTable(
+  "Consumer",
   {
     id: text("id")
       .primaryKey()
@@ -49,7 +49,7 @@ export const clients = sqliteTable(
       .notNull()
       .default(sql`'[]'`)
       .$type<{ type: "fulltext" | "suffix"; pattern: string }[]>(),
-    // 该客户端绑定的 ACME 账户。null = 未绑定。不加外键约束，删除账户时由应用层置空。
+    // 该消费方绑定的 ACME 账户。null = 未绑定。不加外键约束，删除账户时由应用层置空。
     acmeAccountId: text("acmeAccountId"),
     createdAt: text("createdAt").notNull().default(now),
     updatedAt: text("updatedAt")
@@ -57,11 +57,11 @@ export const clients = sqliteTable(
       .default(now)
       .$onUpdate(() => now),
   },
-  (t) => [index("Client_acmeAccountId_idx").on(t.acmeAccountId)],
+  (t) => [index("Consumer_acmeAccountId_idx").on(t.acmeAccountId)],
 );
 
-export type Client = typeof clients.$inferSelect;
-export type NewClient = typeof clients.$inferInsert;
+export type Consumer = typeof consumers.$inferSelect;
+export type NewConsumer = typeof consumers.$inferInsert;
 
 // 证书：业务流程（向 CA 签发）生成的对象，UI 只读。
 export const certificates = sqliteTable(
@@ -71,18 +71,21 @@ export const certificates = sqliteTable(
       .primaryKey()
       .$defaultFn(() => uuidv7()),
     // 证书私钥（PEM）。
-    key: text("key").notNull().default(""),
-    // 主域名 + 备用域名（SAN）。
-    domain: text("domain").notNull().default(""),
-    alt: text("alt", { mode: "json" })
+    privateKey: text("privateKey").notNull().default(""),
+    // 通用名称（primary domain）。
+    commonName: text("commonName").notNull().default(""),
+    // Subject Alternative Names。
+    sans: text("sans", { mode: "json" })
       .notNull()
       .default(sql`'[]'`)
       .$type<string[]>(),
     // 签发所需的配置信息（CA 特定参数等）。任意 JSON，可为 null。
     config: text("config", { mode: "json" }).$type<unknown>(),
-    // CA 证书链 / 叶子证书 / CSR（PEM）。
-    ca: text("ca").notNull().default(""),
-    cer: text("cer").notNull().default(""),
+    // 中间证书链 PEM。
+    chain: text("chain").notNull().default(""),
+    // 叶子证书 PEM。
+    certificate: text("certificate").notNull().default(""),
+    // CSR（PEM）。
     csr: text("csr").notNull().default(""),
     // 签发该证书的 ACME 账户。null = 未关联。
     acmeAccountId: text("acmeAccountId"),

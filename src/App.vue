@@ -16,7 +16,7 @@ const navLinkClass = (active: boolean) =>
   ].join(" ");
 const isActive = (prefix: string) =>
   computed(() => route.path === prefix || route.path.startsWith(prefix + "/"));
-const clientsActive = isActive("/clients");
+const consumersActive = isActive("/consumers");
 const accountsActive = isActive("/acme-accounts");
 const certsActive = isActive("/certificates");
 const dnsCredentialsActive = isActive("/dns-credentials");
@@ -42,8 +42,8 @@ const onLogout = async () => {
         ACME Hub
       </RouterLink>
       <nav class="flex items-center gap-4 text-sm">
-        <RouterLink to="/clients" :class="navLinkClass(clientsActive)">
-          客户端
+        <RouterLink to="/consumers" :class="navLinkClass(consumersActive)">
+          消费方
         </RouterLink>
         <RouterLink to="/acme-accounts" :class="navLinkClass(accountsActive)">
           ACME 账户

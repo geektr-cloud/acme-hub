@@ -22,7 +22,7 @@ const { update } = useFormModel(AcmeAccountEditor);
 const router = useRouter();
 
 const removal = useConfirmPopover({
-  message: "确定删除该 ACME 账户？引用它的客户端与证书会解除关联。",
+  message: "确定删除该 ACME 账户？引用它的消费方与证书会解除关联。",
   useRemoval,
 });
 </script>

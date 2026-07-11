@@ -19,9 +19,9 @@ const findById = async (id: string) => {
 // 删除账户前，置空引用它的 client / certificate（schema 注明悬挂引用由应用层处理）。
 const cascadeReferences = async (id: string) => {
   await db
-    .update(schema.clients)
+    .update(schema.consumers)
     .set({ acmeAccountId: null })
-    .where(eq(schema.clients.acmeAccountId, id));
+    .where(eq(schema.consumers.acmeAccountId, id));
   await db
     .update(schema.certificates)
     .set({ acmeAccountId: null })

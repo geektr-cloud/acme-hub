@@ -27,17 +27,17 @@ export function decideByInfo(
   const notBefore = info.notBefore.getTime();
 
   if (notAfter <= now) {
-    return { mode: "renew", reason: "证书已过期" };
+    return { mode: "renew", reason: "certificate expired" };
   }
 
   const lifetime = notAfter - notBefore;
   if (lifetime <= 0) {
-    return { mode: "renew", reason: "证书有效期异常" };
+    return { mode: "renew", reason: "certificate validity period abnormal" };
   }
 
   const elapsed = now - notBefore;
   if (elapsed / lifetime >= RENEW_RATIO) {
-    return { mode: "renew", reason: "证书寿命已过半" };
+    return { mode: "renew", reason: "certificate past renewal threshold" };
   }
 
   return { mode: "cache", notAfter: info.notAfter, renewAt: renewAt(info) };
@@ -48,13 +48,13 @@ export function decide(
   now: number = Date.now(),
 ): Decision {
   if (!existingCer) {
-    return { mode: "issue", reason: "无已有证书" };
+    return { mode: "issue", reason: "no existing certificate" };
   }
 
   try {
     const info = crypto.readCertificateInfo(existingCer);
     return decideByInfo(info, now);
   } catch {
-    return { mode: "renew", reason: "证书解析失败" };
+    return { mode: "renew", reason: "certificate parse failed" };
   }
 }

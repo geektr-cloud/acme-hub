@@ -1,4 +1,4 @@
-import type { AllowRule } from "@server/core/clients/schema";
+import type { AllowRule } from "@server/core/consumers/schema";
 export type { AllowRule };
 
 function wildcardToBare(domain: string): string {

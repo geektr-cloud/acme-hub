@@ -16,15 +16,16 @@ export async function resolveDnsZone(
       .where(eq(schema.domains.name, name))
       .limit(1);
     if (zone) {
-      if (!zone.dnsCredentialId) throw HttpErr(412, "域名未配置 DNS 凭据");
+      if (!zone.dnsCredentialId)
+        throw HttpErr(412, "domain has no DNS credential configured");
       const [cred] = await db
         .select()
         .from(schema.dnsCredentials)
         .where(eq(schema.dnsCredentials.id, zone.dnsCredentialId))
         .limit(1);
-      if (!cred) throw HttpErr(412, "DNS 凭据不存在");
+      if (!cred) throw HttpErr(412, "DNS credential not found");
       return { zone, cred };
     }
   }
-  throw HttpErr(412, "域名未在系统中注册");
+  throw HttpErr(412, "domain is not registered in the system");
 }
