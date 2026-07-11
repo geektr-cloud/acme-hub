@@ -1,0 +1,16 @@
+apiVersion: v2
+name: acmehub-syncer
+description: Kubernetes operator that syncs ACME certificates from acme-hub into TLS Secrets
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/geektr-cloud/acmehub-syncer
+sources:
+  - https://github.com/geektr-cloud/acmehub-syncer
+keywords:
+  - acme
+  - certificates
+  - kubernetes
+  - operator
+maintainers:
+  - name: geektr-cloud

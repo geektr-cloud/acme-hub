@@ -199,6 +199,20 @@ export const useCertificateStore = defineStore("certificates", () =>
 
 hook 返回**元组**（非对象访问器）：`const [items, status, refresh] = useAll()`、`const [form, issues, status, submit] = useUpsert(idRef)`。
 
+## 集成（`integrations/`）
+
+acme-hub 的**外部消费者**实现，各自独立项目，通过公开 `/pki/v1` 端点消费证书，**不属于 acme-hub 本体**（不在 `server/`、`src/` 内，改本体能力时勿动这些，反之亦然）。
+
+- **`integrations/caddy/`** — Caddy `tls.get_certificate` 插件（Go，module `github.com/geektr-cloud/caddy-acme-hub`）。跳过 CertMagic 的 ACME 流程，握手时调 `POST /pki/v1/certificates/issue` 拉证书，用 `fullchain + privateKey` 建 `tls.Certificate`，按响应 `Cache-Control: max-age` 缓存，续期决策全交 acme-hub。
+- **`integrations/kubernetes/`** — Kubernetes operator **acmehub-syncer**（Go，独立 module `github.com/geektr-cloud/acmehub-syncer`，kubebuilder + controller-runtime）。把 acme-hub 证书同步进集群 TLS Secret，供 Ingress/Gateway 引用。k8s 本质是 acme-hub 的又一个 consumer，与 Caddy 插件同心智。
+  - 三个 CRD（group `acme.geektr.cloud/v1alpha1`）：`ClusterACMEHubConsumer`（cluster-scoped，token Secret 恒在 `--cluster-resource-namespace`，默认 `acmehub-system`）、`ACMEHubConsumer`（namespaced）、`ACMEHubCertificate`（namespaced，声明 `domains` + `consumerRef` + `secretName`）。
+  - Consumer spec 存 `endpoint`（非敏感）+ `secretRef`（指向含 `token` key 的 Secret）。
+  - reconcile：解析 consumer → 调 issue → 幂等写 `kubernetes.io/tls` Secret（用 `fullchain`）→ ownerRef 级联 GC → 按证书寿命 **0.9** 触发续期（`RequeueAfter`）；失败走 **36s→3h** 指数退避 RateLimiter。
+  - 发布：镜像 → GHCR；Helm chart → GitHub Pages。测试：纯逻辑单测 + envtest 集成测。
+  - **安全**：issue 返回含私钥，写进 Secret = 私钥落 etcd（建议开 etcd 加密 + 收窄 RBAC）；operator 到 acme-hub 必须走 HTTPS。
+
+**共通模型**：所有集成都是"持 consumer token、调 issue 端点、消费完整证书材料"的外部主体。acme-hub 持钥、管缓存、判续期；集成侧只搬运。新增集成沿用此模型，勿在集成里重造续期/缓存逻辑。
+
 ## 数据库 / Drizzle
 
 schema 在 `server/db/schema.ts`（drizzle `sqliteTable`），类型经 `$inferSelect` / `$inferInsert` 派生。统一 `import { db, schema } from "@server/db"`。

@@ -1,0 +1,5 @@
+namespace: acmehub-system
+resources:
+  - ../crd
+  - ../rbac
+  - ../manager

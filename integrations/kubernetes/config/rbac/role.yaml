@@ -1,0 +1,56 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - acme.geektr.cloud
+  resources:
+  - acmehubcertificates
+  - acmehubconsumers
+  - clusteracmehubconsumers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - acme.geektr.cloud
+  resources:
+  - acmehubcertificates/finalizers
+  - acmehubconsumers/finalizers
+  - clusteracmehubconsumers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - acme.geektr.cloud
+  resources:
+  - acmehubcertificates/status
+  - acmehubconsumers/status
+  - clusteracmehubconsumers/status
+  verbs:
+  - get
+  - patch
+  - update
