@@ -3,11 +3,11 @@ import { computed, watch } from "vue";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton } from "@/components/acrux-ui/actions";
 import {
-  CopyBtn,
   DataItem,
   DataView,
   DateFormatter,
-  VSeparator,
+  Pem,
+  UUID,
 } from "@/components/acrux-ui/display";
 import { useRouteParams } from "@vueuse/router";
 import { useAsyncState, useHonoApi } from "@acrux/core";
@@ -44,14 +44,6 @@ const account = computed(() => {
   );
 });
 
-// PEM 块定义，便于统一渲染。
-const pemBlocks = computed(() => [
-  { label: "私钥", value: item.value?.privateKey ?? "" },
-  { label: "证书", value: item.value?.certificate ?? "" },
-  { label: "证书链", value: item.value?.chain ?? "" },
-  { label: "CSR", value: item.value?.csr ?? "" },
-]);
-
 watch(id, () => void reload());
 </script>
 
@@ -76,6 +68,9 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
+            <DataItem label="ID">
+              <UUID :value="item.id" :short="0" />
+            </DataItem>
             <DataItem label="通用名称">
               <code class="font-mono">{{ item.commonName || "(无)" }}</code>
             </DataItem>
@@ -93,25 +88,20 @@ watch(id, () => void reload());
               }}</Badge>
               <span v-else class="text-zinc-500">未关联</span>
             </DataItem>
-            <DataItem
-              v-for="block in pemBlocks"
-              :key="block.label"
-              :label="block.label"
-            >
-              <div v-if="block.value" class="flex w-full flex-col gap-1">
-                <details>
-                  <summary
-                    class="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
-                  >
-                    点击展开
-                  </summary>
-                  <pre
-                    class="mt-1 max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
-                    >{{ block.value }}</pre
-                  >
-                </details>
-                <CopyBtn :value="block.value" />
-              </div>
+            <DataItem label="私钥">
+              <Pem v-if="item.privateKey" :value="item.privateKey" copy />
+              <span v-else class="text-zinc-500">(无)</span>
+            </DataItem>
+            <DataItem label="证书">
+              <Pem v-if="item.certificate" :value="item.certificate" copy />
+              <span v-else class="text-zinc-500">(无)</span>
+            </DataItem>
+            <DataItem label="证书链">
+              <Pem v-if="item.chain" :value="item.chain" copy />
+              <span v-else class="text-zinc-500">(无)</span>
+            </DataItem>
+            <DataItem label="CSR">
+              <Pem v-if="item.csr" :value="item.csr" copy />
               <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="配置 (config)">
@@ -124,18 +114,7 @@ watch(id, () => void reload());
               <DateFormatter :value="item.createdAt" />
             </DataItem>
             <DataItem label="更新时间">
-              <DateFormatter :value="item.updatedAt" />
-              <VSeparator />
-              <DateFormatter
-                :value="item.updatedAt"
-                format="distance"
-                class="text-zinc-500"
-              />
-            </DataItem>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
+              <DateFormatter :value="item.updatedAt" addition-distance />
             </DataItem>
           </DataView>
         </CardContent>

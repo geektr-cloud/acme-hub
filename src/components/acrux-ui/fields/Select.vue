@@ -4,7 +4,13 @@ import { computed, type HTMLAttributes } from "vue";
 import { X } from "@lucide/vue";
 import type { AcceptableValue } from "reka-ui";
 import type { AsyncStatus } from "@acrux/core";
-import { Select as SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select as SelectRoot,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const props = withDefaults(
@@ -32,7 +38,10 @@ const props = withDefaults(
 const emit = defineEmits<{ "update:modelValue": [value: V | null] }>();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const defaultTransform = (item: any) => ({ value: item.value, label: String(item.label) });
+const defaultTransform = (item: any) => ({
+  value: item.value,
+  label: String(item.label),
+});
 const transform = props.transformFn ?? defaultTransform;
 
 const options = computed(() => {
@@ -65,7 +74,11 @@ const clear = () => emit("update:modelValue", null);
       </button>
     </SelectTrigger>
     <SelectContent>
-      <SelectItem v-for="opt in options" :key="String(opt.value)" :value="opt.value">
+      <SelectItem
+        v-for="opt in options"
+        :key="String(opt.value)"
+        :value="opt.value"
+      >
         {{ opt.label }}
       </SelectItem>
     </SelectContent>

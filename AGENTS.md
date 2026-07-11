@@ -10,9 +10,9 @@
 
 技术栈：单个 Cloudflare Worker = Vue 3 SPA（`dist/` 经 `ASSETS` binding 提供）+ Hono JSON API（`/api/*`）。数据用 D1（SQLite）+ Drizzle ORM。UI 文案 zh-CN。
 
-业务实体：`acme-accounts`（ACME 账户）、`certificates`（证书）、`consumers`（消费方 = 持 token 调用本服务的外部主体）、`dns-credentials`（DNS 服务商凭据）、`domains`（域名 + 绑定的 DNS 凭据）。
+业务实体：`acme-accounts`（ACME 账户）、`certificates`（证书）、`consumers`（消费者 = 持 token 调用本服务的外部主体）、`dns-credentials`（DNS 服务商凭据）、`domains`（域名 + 绑定的 DNS 凭据）。
 
-对外接口：`pki-v1`（`POST /pki/v1/certificates/issue`）—— 供外部消费方（Caddy 等）拉取/续期证书的公开端点，脱离 `/api` 前缀，见「架构 › 对外 PKI 端点」。
+对外接口：`pki-v1`（`POST /pki/v1/certificates/issue`）—— 供外部消费者（Caddy 等）拉取/续期证书的公开端点，脱离 `/api` 前缀，见「架构 › 对外 PKI 端点」。
 
 ## 依赖说明（重要）
 

@@ -196,7 +196,9 @@ describe("pemFingerprint", () => {
     });
 
     it("certificate", async () => {
-      expect(await pemFingerprint(CERT_SELFSIGNED, "hex")).toBe(EXPECTED.cert.hex);
+      expect(await pemFingerprint(CERT_SELFSIGNED, "hex")).toBe(
+        EXPECTED.cert.hex,
+      );
     });
 
     it("X25519", async () => {
@@ -208,15 +210,21 @@ describe("pemFingerprint", () => {
 
   describe("encode: hex16", () => {
     it("RSA 2048", async () => {
-      expect(await pemFingerprint(RSA_2048, "hex16")).toBe(EXPECTED.rsa2048.hex16);
+      expect(await pemFingerprint(RSA_2048, "hex16")).toBe(
+        EXPECTED.rsa2048.hex16,
+      );
     });
 
     it("EC P256", async () => {
-      expect(await pemFingerprint(EC_P256, "hex16")).toBe(EXPECTED.ecP256.hex16);
+      expect(await pemFingerprint(EC_P256, "hex16")).toBe(
+        EXPECTED.ecP256.hex16,
+      );
     });
 
     it("certificate", async () => {
-      expect(await pemFingerprint(CERT_SELFSIGNED, "hex16")).toBe(EXPECTED.cert.hex16);
+      expect(await pemFingerprint(CERT_SELFSIGNED, "hex16")).toBe(
+        EXPECTED.cert.hex16,
+      );
     });
 
     it("X25519", async () => {
@@ -231,6 +239,8 @@ describe("pemFingerprint", () => {
   });
 
   it("different keys → different fingerprints", async () => {
-    expect(await pemFingerprint(RSA_2048)).not.toBe(await pemFingerprint(EC_P256));
+    expect(await pemFingerprint(RSA_2048)).not.toBe(
+      await pemFingerprint(EC_P256),
+    );
   });
 });

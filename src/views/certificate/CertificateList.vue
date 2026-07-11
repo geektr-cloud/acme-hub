@@ -2,7 +2,7 @@
 import { useCertificateStore } from "@/stores/certificates";
 import Button from "@/components/ui/button/Button.vue";
 import { useConfirmPopover } from "@/components/acrux-ui/actions";
-import { CopyBtn, DateFormatter } from "@/components/acrux-ui/display";
+import { DateFormatter, UUID } from "@/components/acrux-ui/display";
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "@lucide/vue";
 import { useRouter } from "vue-router";
@@ -33,9 +33,9 @@ const removal = useConfirmPopover({
       <TableCaption>共 {{ items.length }} 张证书</TableCaption>
       <TableHeader>
         <TableRow>
+          <TableHead class="w-[140px]">ID</TableHead>
           <TableHead>通用名称</TableHead>
           <TableHead>SAN</TableHead>
-          <TableHead>ID</TableHead>
           <TableHead>更新</TableHead>
           <TableHead class="w-[100px]">操作</TableHead>
         </TableRow>
@@ -47,6 +47,9 @@ const removal = useConfirmPopover({
           class="cursor-pointer"
           @click="router.push(`/certificates/${row.id}`)"
         >
+          <TableCell @click.stop>
+            <UUID :value="row.id" :copy="false" />
+          </TableCell>
           <TableCell class="font-mono">{{
             row.commonName || "(无)"
           }}</TableCell>
@@ -55,12 +58,6 @@ const removal = useConfirmPopover({
               row.sans.length
             }}</Badge>
             <span v-else class="text-zinc-500">—</span>
-          </TableCell>
-          <TableCell class="text-zinc-500">
-            <span class="inline-flex items-center gap-1" @click.stop>
-              {{ row.id.slice(0, 8) }}
-              <CopyBtn :value="row.id" />
-            </span>
           </TableCell>
           <TableCell class="text-zinc-500">
             <DateFormatter :value="row.updatedAt" format="distance" />

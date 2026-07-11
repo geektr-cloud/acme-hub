@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { watch } from "vue";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton, useFormModel } from "@/components/acrux-ui/actions";
 import {
-  CopyBtn,
   DataItem,
   DataView,
   DateFormatter,
-  VSeparator,
+  Token as TokenDisplay,
+  UUID,
 } from "@/components/acrux-ui/display";
 import { useRouteParams } from "@vueuse/router";
 import { useAsyncState, useHonoApi } from "@acrux/core";
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDnsCredentialStore } from "@/stores/dnsCredentials";
 import { client } from "@/utils/api";
-import { Edit, Eye, EyeOff } from "@lucide/vue";
+import { Edit } from "@lucide/vue";
 import DnsCredentialEditor from "./DnsCredentialEditor.vue";
 
 const id = useRouteParams<string>("id");
@@ -37,12 +37,8 @@ const [item, status, reload] = useAsyncState(fetchItem, undefined, {
 });
 const removal = useRemoval(id);
 
-const showSecrets = ref(false);
-
 const providerLabel = (p: string) =>
   p === "cloudflare" ? "Cloudflare" : p === "alicloud" ? "阿里云" : p;
-
-const mask = (v: string | undefined) => (v ? "••••••••" : "(无)");
 
 watch(id, () => void reload());
 </script>
@@ -71,6 +67,9 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
+            <DataItem label="ID">
+              <UUID :value="item.id" :short="0" />
+            </DataItem>
             <DataItem label="名称">{{ item.name || "(未命名)" }}</DataItem>
             <DataItem label="描述">{{ item.description || "(无)" }}</DataItem>
             <DataItem label="服务商">
@@ -81,102 +80,36 @@ watch(id, () => void reload());
 
             <template v-if="item.provider === 'cloudflare'">
               <DataItem label="API Token">
-                <template
-                  v-if="showSecrets && item.creds && 'apiToken' in item.creds"
-                >
-                  <code class="font-mono text-xs break-all">{{
-                    item.creds.apiToken
-                  }}</code>
-                  <VSeparator />
-                  <CopyBtn :value="item.creds.apiToken" />
-                </template>
-                <template v-else>
-                  {{
-                    mask(
-                      item.creds && "apiToken" in item.creds
-                        ? item.creds.apiToken
-                        : undefined,
-                    )
-                  }}
-                </template>
+                <TokenDisplay
+                  v-if="item.creds && 'apiToken' in item.creds"
+                  :value="item.creds.apiToken"
+                />
+                <span v-else class="text-zinc-500">(无)</span>
               </DataItem>
             </template>
 
             <template v-else-if="item.provider === 'alicloud'">
               <DataItem label="AccessKey ID">
-                <template
-                  v-if="
-                    showSecrets && item.creds && 'accessKeyId' in item.creds
-                  "
-                >
-                  <code class="font-mono text-xs break-all">{{
-                    item.creds.accessKeyId
-                  }}</code>
-                  <VSeparator />
-                  <CopyBtn :value="item.creds.accessKeyId" />
-                </template>
-                <template v-else>
-                  {{
-                    mask(
-                      item.creds && "accessKeyId" in item.creds
-                        ? item.creds.accessKeyId
-                        : undefined,
-                    )
-                  }}
-                </template>
+                <TokenDisplay
+                  v-if="item.creds && 'accessKeyId' in item.creds"
+                  :value="item.creds.accessKeyId"
+                />
+                <span v-else class="text-zinc-500">(无)</span>
               </DataItem>
               <DataItem label="AccessKey Secret">
-                <template
-                  v-if="
-                    showSecrets && item.creds && 'accessKeySecret' in item.creds
-                  "
-                >
-                  <code class="font-mono text-xs break-all">{{
-                    item.creds.accessKeySecret
-                  }}</code>
-                  <VSeparator />
-                  <CopyBtn :value="item.creds.accessKeySecret" />
-                </template>
-                <template v-else>
-                  {{
-                    mask(
-                      item.creds && "accessKeySecret" in item.creds
-                        ? item.creds.accessKeySecret
-                        : undefined,
-                    )
-                  }}
-                </template>
+                <TokenDisplay
+                  v-if="item.creds && 'accessKeySecret' in item.creds"
+                  :value="item.creds.accessKeySecret"
+                />
+                <span v-else class="text-zinc-500">(无)</span>
               </DataItem>
             </template>
-
-            <DataItem label="凭据">
-              <Button
-                variant="ghost"
-                size="sm"
-                @click="showSecrets = !showSecrets"
-              >
-                <Eye v-if="!showSecrets" class="size-3.5" />
-                <EyeOff v-else class="size-3.5" />
-                {{ showSecrets ? "隐藏" : "显示" }}
-              </Button>
-            </DataItem>
 
             <DataItem label="创建时间">
               <DateFormatter :value="item.createdAt" />
             </DataItem>
             <DataItem label="更新时间">
-              <DateFormatter :value="item.updatedAt" />
-              <VSeparator />
-              <DateFormatter
-                :value="item.updatedAt"
-                format="distance"
-                class="text-zinc-500"
-              />
-            </DataItem>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
+              <DateFormatter :value="item.updatedAt" addition-distance />
             </DataItem>
           </DataView>
         </CardContent>

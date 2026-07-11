@@ -7,6 +7,8 @@ import {
   DataItem,
   DataView,
   DateFormatter,
+  Pem,
+  UUID,
   VSeparator,
 } from "@/components/acrux-ui/display";
 import { useRouteParams } from "@vueuse/router";
@@ -60,12 +62,15 @@ watch(id, () => void reload());
             </Button>
             <RemovalButton
               :ctx="removal"
-              confirm="确定删除此账户？引用它的消费方与证书会解除关联。"
+              confirm="确定删除此账户？引用它的消费者与证书会解除关联。"
             />
           </CardAction>
         </CardHeader>
         <CardContent>
           <DataView>
+            <DataItem label="ID">
+              <UUID :value="item.id" :short="0" />
+            </DataItem>
             <DataItem label="名称">{{ item.name || "(未命名)" }}</DataItem>
             <DataItem label="描述">{{ item.description || "(无)" }}</DataItem>
             <DataItem label="邮箱">{{ item.email || "(无)" }}</DataItem>
@@ -102,61 +107,26 @@ watch(id, () => void reload());
               </template>
             </DataItem>
             <DataItem label="私钥">
-              <div
+              <Pem
                 v-if="item.creds?.privateKey"
-                class="flex w-full flex-col gap-1"
-              >
-                <details>
-                  <summary
-                    class="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
-                  >
-                    点击展开私钥
-                  </summary>
-                  <pre
-                    class="mt-1 max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
-                    >{{ item.creds.privateKey }}</pre
-                  >
-                </details>
-                <CopyBtn :value="item.creds.privateKey" />
-              </div>
+                :value="item.creds.privateKey"
+                copy
+              />
               <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="公钥">
-              <div
+              <Pem
                 v-if="item.creds?.publicKey"
-                class="flex w-full flex-col gap-1"
-              >
-                <details>
-                  <summary
-                    class="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
-                  >
-                    点击展开公钥
-                  </summary>
-                  <pre
-                    class="mt-1 max-h-60 overflow-auto rounded bg-zinc-900 p-2 font-mono text-xs whitespace-pre-wrap break-all"
-                    >{{ item.creds.publicKey }}</pre
-                  >
-                </details>
-                <CopyBtn :value="item.creds.publicKey" />
-              </div>
+                :value="item.creds.publicKey"
+                copy
+              />
               <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="创建时间">
               <DateFormatter :value="item.createdAt" />
             </DataItem>
             <DataItem label="更新时间">
-              <DateFormatter :value="item.updatedAt" />
-              <VSeparator />
-              <DateFormatter
-                :value="item.updatedAt"
-                format="distance"
-                class="text-zinc-500"
-              />
-            </DataItem>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
+              <DateFormatter :value="item.updatedAt" addition-distance />
             </DataItem>
           </DataView>
         </CardContent>

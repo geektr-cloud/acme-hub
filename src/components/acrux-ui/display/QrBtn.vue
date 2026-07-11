@@ -4,10 +4,13 @@ import { useModal } from "vue-final-modal";
 import { QrCode } from "@lucide/vue";
 import { IconBtn } from "@/components/acrux-ui/base";
 
-withDefaults(defineProps<{ value: string; small?: boolean; title?: string }>(), {
-  small: false,
-  title: "二维码",
-});
+withDefaults(
+  defineProps<{ value: string; small?: boolean; title?: string }>(),
+  {
+    small: false,
+    title: "二维码",
+  },
+);
 
 // Lazy chunk: QR encoder + modal markup don't ship in the main bundle.
 const QrModal = defineAsyncComponent(() => import("./QrModal.vue"));

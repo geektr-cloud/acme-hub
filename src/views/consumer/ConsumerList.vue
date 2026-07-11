@@ -4,7 +4,7 @@ import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import ConsumerEditor from "./ConsumerEditor.vue";
 import Button from "@/components/ui/button/Button.vue";
 import { useConfirmPopover, useFormModel } from "@/components/acrux-ui/actions";
-import { CopyBtn, DateFormatter } from "@/components/acrux-ui/display";
+import { DateFormatter, UUID } from "@/components/acrux-ui/display";
 import { Badge } from "@/components/ui/badge";
 import { SquarePen, Trash2 } from "@lucide/vue";
 import { computed } from "vue";
@@ -32,7 +32,7 @@ const accountName = computed(() => (id: string | null) => {
 });
 
 const removal = useConfirmPopover({
-  message: "确定删除该消费方？",
+  message: "确定删除该消费者？",
   useRemoval,
 });
 </script>
@@ -41,13 +41,13 @@ const removal = useConfirmPopover({
   <div v-if="items.length > 0">
     <removal.ConfirmPopover />
     <Table>
-      <TableCaption>共 {{ items.length }} 个消费方</TableCaption>
+      <TableCaption>共 {{ items.length }} 个消费者</TableCaption>
       <TableHeader>
         <TableRow>
+          <TableHead class="w-[140px]">ID</TableHead>
           <TableHead>名称</TableHead>
           <TableHead>规则数</TableHead>
           <TableHead>绑定账户</TableHead>
-          <TableHead>ID</TableHead>
           <TableHead>更新</TableHead>
           <TableHead class="w-[100px]">操作</TableHead>
         </TableRow>
@@ -59,6 +59,9 @@ const removal = useConfirmPopover({
           class="cursor-pointer"
           @click="router.push(`/consumers/${row.id}`)"
         >
+          <TableCell @click.stop>
+            <UUID :value="row.id" :copy="false" />
+          </TableCell>
           <TableCell>{{ row.name || "(未命名)" }}</TableCell>
           <TableCell class="text-zinc-400">{{ row.allow.length }}</TableCell>
           <TableCell>
@@ -66,12 +69,6 @@ const removal = useConfirmPopover({
               accountName(row.acmeAccountId)
             }}</Badge>
             <span v-else class="text-zinc-500">未绑定</span>
-          </TableCell>
-          <TableCell class="text-zinc-500">
-            <span class="inline-flex items-center gap-1" @click.stop>
-              {{ row.id.slice(0, 8) }}
-              <CopyBtn :value="row.id" />
-            </span>
           </TableCell>
           <TableCell class="text-zinc-500">
             <DateFormatter :value="row.updatedAt" format="distance" />

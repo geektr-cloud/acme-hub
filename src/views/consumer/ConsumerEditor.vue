@@ -49,7 +49,7 @@ const onSave = async () => {
 
 <template>
   <FieldSet class="w-2xl">
-    <FieldLegend>{{ id ? "编辑" : "新建" }}消费方</FieldLegend>
+    <FieldLegend>{{ id ? "编辑" : "新建" }}消费者</FieldLegend>
     <FieldGroup>
       <Field :data-invalid="issues.errors('name').length > 0">
         <FieldLabel for="name">名称</FieldLabel>

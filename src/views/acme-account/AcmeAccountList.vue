@@ -3,7 +3,7 @@ import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import AcmeAccountEditor from "./AcmeAccountEditor.vue";
 import Button from "@/components/ui/button/Button.vue";
 import { useConfirmPopover, useFormModel } from "@/components/acrux-ui/actions";
-import { CopyBtn, DateFormatter } from "@/components/acrux-ui/display";
+import { DateFormatter, UUID } from "@/components/acrux-ui/display";
 import { SquarePen, Trash2 } from "@lucide/vue";
 import { useRouter } from "vue-router";
 import {
@@ -22,7 +22,7 @@ const { update } = useFormModel(AcmeAccountEditor);
 const router = useRouter();
 
 const removal = useConfirmPopover({
-  message: "确定删除该 ACME 账户？引用它的消费方与证书会解除关联。",
+  message: "确定删除该 ACME 账户？引用它的消费者与证书会解除关联。",
   useRemoval,
 });
 </script>
@@ -34,9 +34,9 @@ const removal = useConfirmPopover({
       <TableCaption>共 {{ items.length }} 个账户</TableCaption>
       <TableHeader>
         <TableRow>
+          <TableHead class="w-[140px]">ID</TableHead>
           <TableHead>名称</TableHead>
           <TableHead>邮箱</TableHead>
-          <TableHead>ID</TableHead>
           <TableHead>更新</TableHead>
           <TableHead class="w-[100px]">操作</TableHead>
         </TableRow>
@@ -48,14 +48,11 @@ const removal = useConfirmPopover({
           class="cursor-pointer"
           @click="router.push(`/acme-accounts/${row.id}`)"
         >
+          <TableCell @click.stop>
+            <UUID :value="row.id" :copy="false" />
+          </TableCell>
           <TableCell>{{ row.name || "(未命名)" }}</TableCell>
           <TableCell class="text-zinc-400">{{ row.email || "—" }}</TableCell>
-          <TableCell class="text-zinc-500">
-            <span class="inline-flex items-center gap-1" @click.stop>
-              {{ row.id.slice(0, 8) }}
-              <CopyBtn :value="row.id" />
-            </span>
-          </TableCell>
           <TableCell class="text-zinc-500">
             <DateFormatter :value="row.updatedAt" format="distance" />
           </TableCell>

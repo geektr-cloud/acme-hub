@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { IconBtn } from "@/components/acrux-ui/base";
 import { PopoverPortal, type ReferenceElement } from "reka-ui";
@@ -29,7 +33,11 @@ const submit = () =>
       <PopoverContent side="left" class="w-auto">
         <div class="flex flex-row items-center gap-2">
           <div>{{ message }}</div>
-          <IconBtn variant="secondary" :disabled="status.loading" @click="void submit()">
+          <IconBtn
+            variant="secondary"
+            :disabled="status.loading"
+            @click="void submit()"
+          >
             <Check v-if="!status.loading" />
             <Spinner v-else />
           </IconBtn>

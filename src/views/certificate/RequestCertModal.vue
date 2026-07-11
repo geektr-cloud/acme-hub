@@ -123,10 +123,10 @@ function cancel() {
 
     <div class="flex flex-col gap-3">
       <div v-if="showClientSelector" class="flex flex-col gap-1.5">
-        <label class="text-sm font-medium">消费方</label>
+        <label class="text-sm font-medium">消费者</label>
         <Select v-model="selectedClientId" :disabled="running">
           <SelectTrigger>
-            <SelectValue placeholder="选择消费方" />
+            <SelectValue placeholder="选择消费者" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="c in clients" :key="c.id" :value="c.id">

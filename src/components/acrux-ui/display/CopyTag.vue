@@ -23,7 +23,11 @@ const WrapTag = props.variant === "raw" ? "p" : Badge;
 </script>
 
 <template>
-  <WrapTag v-bind="$attrs" class="max-w-full flex items-center gap-2 cursor-pointer" @click="value && copy(value)">
+  <WrapTag
+    v-bind="$attrs"
+    class="max-w-full flex items-center gap-2 cursor-pointer"
+    @click="value && copy(value)"
+  >
     <code class="inline-block truncate min-w-0">{{ label ?? value }}</code>
     <template v-if="label || value">
       <VSeparator />

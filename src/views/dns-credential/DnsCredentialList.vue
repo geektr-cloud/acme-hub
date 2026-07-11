@@ -3,7 +3,7 @@ import { useDnsCredentialStore } from "@/stores/dnsCredentials";
 import DnsCredentialEditor from "./DnsCredentialEditor.vue";
 import Button from "@/components/ui/button/Button.vue";
 import { useConfirmPopover, useFormModel } from "@/components/acrux-ui/actions";
-import { CopyBtn, DateFormatter } from "@/components/acrux-ui/display";
+import { DateFormatter, UUID } from "@/components/acrux-ui/display";
 import { Badge } from "@/components/ui/badge";
 import { SquarePen, Trash2 } from "@lucide/vue";
 import { useRouter } from "vue-router";
@@ -38,10 +38,10 @@ const removal = useConfirmPopover({
       <TableCaption>共 {{ items.length }} 个 DNS 凭据</TableCaption>
       <TableHeader>
         <TableRow>
+          <TableHead class="w-[140px]">ID</TableHead>
           <TableHead>名称</TableHead>
           <TableHead>服务商</TableHead>
           <TableHead>描述</TableHead>
-          <TableHead>ID</TableHead>
           <TableHead>更新</TableHead>
           <TableHead class="w-[100px]">操作</TableHead>
         </TableRow>
@@ -53,18 +53,15 @@ const removal = useConfirmPopover({
           class="cursor-pointer"
           @click="router.push(`/dns-credentials/${row.id}`)"
         >
+          <TableCell @click.stop>
+            <UUID :value="row.id" :copy="false" />
+          </TableCell>
           <TableCell>{{ row.name || "(未命名)" }}</TableCell>
           <TableCell>
             <Badge variant="secondary">{{ providerLabel(row.provider) }}</Badge>
           </TableCell>
           <TableCell class="text-zinc-400">
             {{ row.description || "(无)" }}
-          </TableCell>
-          <TableCell class="text-zinc-500">
-            <span class="inline-flex items-center gap-1" @click.stop>
-              {{ row.id.slice(0, 8) }}
-              <CopyBtn :value="row.id" />
-            </span>
           </TableCell>
           <TableCell class="text-zinc-500">
             <DateFormatter :value="row.updatedAt" format="distance" />

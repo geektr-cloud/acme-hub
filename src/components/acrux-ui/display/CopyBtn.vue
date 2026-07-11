@@ -8,7 +8,12 @@ defineProps<{ value: string }>();
 </script>
 
 <template>
-  <IconBtn size="icon-xs" class="cursor-pointer" :disabled="!value" @click="copy(value)">
+  <IconBtn
+    size="icon-xs"
+    class="cursor-pointer"
+    :disabled="!value"
+    @click="copy(value)"
+  >
     <Icon v-if="!copied" :as="Copy" />
     <Icon v-else :as="Check" />
   </IconBtn>

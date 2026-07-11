@@ -39,7 +39,8 @@ const toHex16 = (buf: ArrayBuffer) => {
   return tail.replace(/(.{4})/g, "$1 ").trim();
 };
 
-const toBase64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const toBase64 = (buf: ArrayBuffer) =>
+  btoa(String.fromCharCode(...new Uint8Array(buf)));
 
 /**
  * Compute the SHA-256 fingerprint of a PEM string.
@@ -50,10 +51,16 @@ const toBase64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Arra
  *   - "base64"  — standard base64 of the raw hash
  * Returns "" for empty input.
  */
-export async function pemFingerprint(pem: string, encode: PemEncode = "base64"): Promise<string> {
+export async function pemFingerprint(
+  pem: string,
+  encode: PemEncode = "base64",
+): Promise<string> {
   const bytes = pemToBytes(pem);
   if (bytes.length === 0) return "";
-  const hash = await crypto.subtle.digest("SHA-256", bytes.buffer as ArrayBuffer);
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    bytes.buffer as ArrayBuffer,
+  );
   if (encode === "hex") return toHex(hash);
   if (encode === "hex16") return toHex16(hash);
   return toBase64(hash);

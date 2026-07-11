@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { format as _format, formatDistanceToNow } from "date-fns";
+import { VSeparator } from "./DataView.ts";
 
 defineOptions({ name: "DataDate" });
 
@@ -8,9 +9,11 @@ const props = withDefaults(
   defineProps<{
     value: Date | string | number;
     format?: string;
+    additionDistance?: boolean;
   }>(),
   {
     format: "datetime",
+    additionDistance: false,
   },
 );
 
@@ -21,17 +24,27 @@ const dateFormatPresets: Record<string, string> = {
   timestamp: "T",
 };
 
+const d = computed(() =>
+  props.value instanceof Date ? props.value : new Date(props.value),
+);
+
 const dateString = computed(() => {
-  const d = props.value instanceof Date ? props.value : new Date(props.value);
-
   if (props.format === "distance") {
-    return formatDistanceToNow(d, { addSuffix: true });
+    return formatDistanceToNow(d.value, { addSuffix: true });
   }
-
-  return _format(d, dateFormatPresets[props.format] ?? props.format);
+  return _format(d.value, dateFormatPresets[props.format] ?? props.format);
 });
+
+const distance = computed(() =>
+  formatDistanceToNow(d.value, { addSuffix: true }),
+);
 </script>
 
 <template>
-  <span>{{ dateString }}</span>
+  <template v-if="additionDistance">
+    <span>{{ dateString }}</span>
+    <VSeparator />
+    <span class="text-zinc-500">{{ distance }}</span>
+  </template>
+  <span v-else>{{ dateString }}</span>
 </template>

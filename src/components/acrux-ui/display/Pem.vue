@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useClipboard } from "@vueuse/core";
-import { Check, Copy, Download, Eye, EyeClosed } from "@lucide/vue";
+import { Check, Copy, Download, Eye, EyeClosed, Minus } from "@lucide/vue";
 import { Icon, IconBtn } from "@/components/acrux-ui/base";
 import { ref, watch } from "vue";
 import { pemFingerprint, type PemEncode } from "./pem";
+import { VSeparator } from "./DataView.ts";
 
 defineOptions({ name: "PemDisplay" });
 
@@ -11,13 +12,14 @@ const { copy: doCopy, copied } = useClipboard();
 
 const props = withDefaults(
   defineProps<{
-    value: string;
+    value?: string | null;
     expand?: boolean;
     copy?: boolean;
     download?: string;
     encode?: PemEncode;
   }>(),
   {
+    value: undefined,
     expand: false,
     copy: false,
     download: "",
@@ -36,7 +38,7 @@ const sha256 = ref("");
 watch(
   [() => props.value, () => props.encode],
   async ([v, e]) => {
-    sha256.value = await pemFingerprint(v, e);
+    sha256.value = v ? await pemFingerprint(v, e) : "";
   },
   { immediate: true },
 );
@@ -54,24 +56,40 @@ const downloadFile = () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 min-w-0">
+  <div v-if="value" class="flex flex-col gap-1 min-w-0">
     <div class="inline-flex items-center gap-1 min-w-0">
       <code class="truncate text-xs">SHA256:{{ sha256 }}</code>
-      <IconBtn v-if="copy && value" size="icon-xs" class="cursor-pointer shrink-0" @click="doCopy(value)">
+      <VSeparator />
+      <IconBtn
+        v-if="copy"
+        size="icon-xs"
+        class="cursor-pointer shrink-0"
+        @click="doCopy(value)"
+      >
         <Icon v-if="!copied" :as="Copy" />
         <Icon v-else :as="Check" />
       </IconBtn>
-      <IconBtn v-if="download && value" size="icon-xs" class="cursor-pointer shrink-0" @click="downloadFile()">
+      <IconBtn
+        v-if="download"
+        size="icon-xs"
+        class="cursor-pointer shrink-0"
+        @click="downloadFile()"
+      >
         <Icon :as="Download" />
       </IconBtn>
-      <IconBtn size="icon-xs" class="cursor-pointer shrink-0" @click="visible = !visible">
+      <IconBtn
+        size="icon-xs"
+        class="cursor-pointer shrink-0"
+        @click="visible = !visible"
+      >
         <Icon v-if="visible" :as="Eye" />
         <Icon v-else :as="EyeClosed" />
       </IconBtn>
     </div>
     <pre
-      v-if="visible && value"
+      v-if="visible"
       class="bg-muted overflow-x-auto rounded border p-2 text-xs"
     ><code>{{ value }}</code></pre>
   </div>
+  <span v-else class="text-zinc-500"><Icon :as="Minus" /></span>
 </template>

@@ -33,7 +33,7 @@ export const acmeAccounts = sqliteTable("AcmeAccount", {
 export type AcmeAccount = typeof acmeAccounts.$inferSelect;
 export type NewAcmeAccount = typeof acmeAccounts.$inferInsert;
 
-// 消费方：持 token 调用本服务的外部主体，allow 限定其可申请的域名范围。
+// 消费者：持 token 调用本服务的外部主体，allow 限定其可申请的域名范围。
 export const consumers = sqliteTable(
   "Consumer",
   {
@@ -49,7 +49,7 @@ export const consumers = sqliteTable(
       .notNull()
       .default(sql`'[]'`)
       .$type<{ type: "fulltext" | "suffix"; pattern: string }[]>(),
-    // 该消费方绑定的 ACME 账户。null = 未绑定。不加外键约束，删除账户时由应用层置空。
+    // 该消费者绑定的 ACME 账户。null = 未绑定。不加外键约束，删除账户时由应用层置空。
     acmeAccountId: text("acmeAccountId"),
     createdAt: text("createdAt").notNull().default(now),
     updatedAt: text("updatedAt")

@@ -116,11 +116,13 @@ export async function runAcme(
       const bare = _authz.identifier.value.replace(/^\*\./, "");
       const isNew = !seenBare.has(bare);
       seenBare.add(bare);
-      if (isNew) await send({ type: "challenge", domain: bare, status: "preparing" });
+      if (isNew)
+        await send({ type: "challenge", domain: bare, status: "preparing" });
       const fqdn = `_acme-challenge.${bare}`;
       const { dns, zoneName } = getDns(bare);
       await dns.ensureTxt(zoneName, fqdn, keyAuth, remark);
-      if (isNew) await send({ type: "challenge", domain: bare, status: "ready" });
+      if (isNew)
+        await send({ type: "challenge", domain: bare, status: "ready" });
     },
     challengeRemoveFn: async (_authz, _challenge, keyAuth) => {
       const bare = _authz.identifier.value.replace(/^\*\./, "");

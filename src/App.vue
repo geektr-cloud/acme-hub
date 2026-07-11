@@ -43,7 +43,7 @@ const onLogout = async () => {
       </RouterLink>
       <nav class="flex items-center gap-4 text-sm">
         <RouterLink to="/consumers" :class="navLinkClass(consumersActive)">
-          消费方
+          消费者
         </RouterLink>
         <RouterLink to="/acme-accounts" :class="navLinkClass(accountsActive)">
           ACME 账户

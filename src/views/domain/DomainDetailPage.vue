@@ -3,11 +3,10 @@ import { computed, watch } from "vue";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton, useFormModel } from "@/components/acrux-ui/actions";
 import {
-  CopyBtn,
   DataItem,
   DataView,
   DateFormatter,
-  VSeparator,
+  UUID,
 } from "@/components/acrux-ui/display";
 import { useRouteParams } from "@vueuse/router";
 import { useAsyncState, useHonoApi } from "@acrux/core";
@@ -72,6 +71,9 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
+            <DataItem label="ID">
+              <UUID :value="item.id" :short="0" />
+            </DataItem>
             <DataItem label="域名">
               <span class="font-mono">{{ item.name || "(未命名)" }}</span>
             </DataItem>
@@ -88,18 +90,7 @@ watch(id, () => void reload());
               <DateFormatter :value="item.createdAt" />
             </DataItem>
             <DataItem label="更新时间">
-              <DateFormatter :value="item.updatedAt" />
-              <VSeparator />
-              <DateFormatter
-                :value="item.updatedAt"
-                format="distance"
-                class="text-zinc-500"
-              />
-            </DataItem>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
+              <DateFormatter :value="item.updatedAt" addition-distance />
             </DataItem>
           </DataView>
         </CardContent>

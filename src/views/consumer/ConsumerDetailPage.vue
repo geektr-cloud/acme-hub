@@ -12,12 +12,12 @@ import { VueFinalModal, useModal } from "vue-final-modal";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton, useFormModel } from "@/components/acrux-ui/actions";
 import {
-  CopyBtn,
   CopyTag,
   DataItem,
   DataView,
   DateFormatter,
-  VSeparator,
+  Token as TokenDisplay,
+  UUID,
 } from "@/components/acrux-ui/display";
 import { useRouteParams } from "@vueuse/router";
 import { useAsyncState, useHonoApi } from "@acrux/core";
@@ -53,7 +53,7 @@ const [item, status, reload] = useAsyncState(fetchItem, undefined, {
 });
 const removal = useRemoval(id);
 
-// 匹配到的证书：走对外端点，用该消费方自己的 Bearer token 鉴权（同 allow 规则过滤）。
+// 匹配到的证书：走对外端点，用该消费者自己的 Bearer token 鉴权（同 allow 规则过滤）。
 const certs = ref<pki.CertListItem[]>([]);
 const certsLoading = ref(false);
 const certsError = ref<string | null>(null);
@@ -167,7 +167,7 @@ watch(id, () => void reload());
       <Card>
         <CardHeader>
           <CardTitle class="text-base">{{
-            item.name || "消费方详情"
+            item.name || "消费者详情"
           }}</CardTitle>
           <CardAction>
             <Button variant="secondary" @click="update(item!.id)">
@@ -175,32 +175,24 @@ watch(id, () => void reload());
             </Button>
             <RemovalButton
               :ctx="removal"
-              confirm="确定删除此消费方？不可恢复。"
+              confirm="确定删除此消费者？不可恢复。"
             />
           </CardAction>
         </CardHeader>
         <CardContent>
           <DataView>
+            <DataItem label="ID">
+              <UUID :value="item.id" :short="0" />
+            </DataItem>
             <DataItem label="名称">{{ item.name || "(未命名)" }}</DataItem>
             <DataItem label="描述">{{ item.description || "(无)" }}</DataItem>
             <DataItem label="Token">
-              <code class="font-mono text-xs break-all">{{
-                item.token || "(无)"
-              }}</code>
-              <template v-if="item.token">
-                <VSeparator />
-                <CopyBtn :value="item.token" />
-              </template>
-              <VSeparator />
-              <Button
-                variant="ghost"
-                size="icon"
-                class="size-3.5"
-                title="轮换 token"
-                @click="rotateToken"
-              >
-                <RefreshCw class="size-3.5 shrink-0" />
-              </Button>
+              <TokenDisplay
+                v-if="item.token"
+                :value="item.token"
+                :on-rotate="rotateToken"
+              />
+              <span v-else class="text-zinc-500">(无)</span>
             </DataItem>
             <DataItem label="绑定账户">
               <Badge v-if="account" variant="secondary">{{
@@ -227,18 +219,7 @@ watch(id, () => void reload());
               <DateFormatter :value="item.createdAt" />
             </DataItem>
             <DataItem label="更新时间">
-              <DateFormatter :value="item.updatedAt" />
-              <VSeparator />
-              <DateFormatter
-                :value="item.updatedAt"
-                format="distance"
-                class="text-zinc-500"
-              />
-            </DataItem>
-            <DataItem label="ID">
-              {{ item.id }}
-              <VSeparator />
-              <CopyBtn :value="item.id" />
+              <DateFormatter :value="item.updatedAt" addition-distance />
             </DataItem>
           </DataView>
         </CardContent>
@@ -255,24 +236,20 @@ watch(id, () => void reload());
           </CardTitle>
           <CardAction>
             <Button
-              variant="ghost"
-              size="icon"
-              class="size-7"
+              variant="secondary"
               title="申请证书"
               :disabled="!item.token"
               @click="onRequestCert()"
             >
-              <Plus class="size-3.5" />
+              <Plus />
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
-              class="size-7"
+              variant="secondary"
               title="刷新"
               :disabled="certsLoading || !item.token"
               @click="loadCerts(item!.token)"
             >
-              <RefreshCw class="size-3.5" />
+              <RefreshCw />
             </Button>
           </CardAction>
         </CardHeader>
@@ -288,7 +265,7 @@ watch(id, () => void reload());
             加载失败：{{ certsError }}
           </div>
           <div v-else-if="!item.token" class="text-sm text-zinc-500">
-            消费方无 token，无法查询证书。
+            消费者无 token，无法查询证书。
           </div>
           <div v-else-if="certs.length === 0" class="text-sm text-zinc-500">
             无匹配证书。
