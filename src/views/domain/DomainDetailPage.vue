@@ -52,7 +52,11 @@ watch(id, () => void reload());
 </script>
 
 <template>
-  <PageDetail :loading="status.loading" :error="status.error" @retry="reload">
+  <PageDetail
+    :loading="status.loading"
+    :error="status.error"
+    :on-retry="reload"
+  >
     <template v-if="item">
       <Card>
         <CardHeader>

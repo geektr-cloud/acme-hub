@@ -24,9 +24,8 @@ import Button from "@/components/ui/button/Button.vue";
 const props = defineProps<{
   loading?: boolean;
   error?: unknown;
+  onRetry?: () => void;
 }>();
-
-defineEmits<{ (e: "retry"): void }>();
 
 const errorMessage = computed(() =>
   props.error instanceof Error
@@ -75,7 +74,7 @@ const errorMessage = computed(() =>
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="secondary" @click="$emit('retry')">
+            <Button v-if="onRetry" variant="secondary" @click="onRetry()">
               <RotateCcw />重试
             </Button>
           </EmptyContent>

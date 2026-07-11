@@ -33,7 +33,7 @@ const removal = useConfirmPopover({
       <TableCaption>共 {{ items.length }} 张证书</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>主域名</TableHead>
+          <TableHead>通用名称</TableHead>
           <TableHead>SAN</TableHead>
           <TableHead>ID</TableHead>
           <TableHead>更新</TableHead>

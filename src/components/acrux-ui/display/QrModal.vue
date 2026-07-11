@@ -4,8 +4,7 @@ import { VueFinalModal } from "vue-final-modal";
 import QRCode from "qrcode";
 import { Card, CardContent } from "@/components/ui/card";
 
-const props = defineProps<{ value: string }>();
-const emit = defineEmits<{ (e: "close"): void }>();
+const props = defineProps<{ value: string; onClose?: () => void }>();
 
 const svg = ref("");
 const error = ref("");
@@ -29,9 +28,9 @@ onMounted(async () => {
     class="flex items-center justify-center"
     content-class="outline-none"
     :focus-trap="false"
-    @click-outside="emit('close')"
+    @click-outside="onClose?.()"
   >
-    <Card class="cursor-pointer" @click="emit('close')">
+    <Card class="cursor-pointer" @click="onClose?.()">
       <CardContent class="flex flex-col items-center gap-2 p-4">
         <p v-if="error" class="text-destructive text-sm">{{ error }}</p>
         <div v-else-if="!svg" class="text-muted-foreground text-sm">

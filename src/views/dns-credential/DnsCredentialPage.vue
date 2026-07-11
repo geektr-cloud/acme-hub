@@ -18,8 +18,8 @@ const [items, status, refresh] = useAll();
     :loading="status.loading"
     :error="status.error"
     :items="items"
-    @retry="void refresh()"
-    @create="create()"
+    :on-retry="() => refresh()"
+    :on-create="create"
   >
     <DnsCredentialList />
   </PageEntry>

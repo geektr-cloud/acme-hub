@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import {
+  computed,
+  defineComponent,
+  h,
+  nextTick,
+  onUnmounted,
+  ref,
+  watch,
+} from "vue";
+import { VueFinalModal, useModal } from "vue-final-modal";
 import { PageDetail } from "@/components/acrux-ui/page";
 import { RemovalButton, useFormModel } from "@/components/acrux-ui/actions";
 import {
@@ -25,10 +34,11 @@ import { useClientStore } from "@/stores/clients";
 import { useAcmeAccountStore } from "@/stores/acmeAccounts";
 import { client } from "@/utils/api";
 import type { acmeV1 } from "@server/core/acme-v1";
-import { Edit, RefreshCw, ShieldCheck } from "@lucide/vue";
+import { Edit, Plus, RefreshCw, ShieldCheck } from "@lucide/vue";
 import { useRouter } from "vue-router";
 import { Spinner } from "@/components/ui/spinner";
 import ClientEditor from "./ClientEditor.vue";
+import RequestCertModal from "@/views/certificate/RequestCertModal.vue";
 
 const id = useRouteParams<string>("id");
 const router = useRouter();
@@ -88,6 +98,52 @@ const account = computed(() => {
 
 const ruleLabel = (type: string) => (type === "suffix" ? "后缀" : "全文");
 
+const {
+  open: openCertModal,
+  close: closeCertModal,
+  destroy: destroyCertModal,
+} = useModal({
+  component: defineComponent({
+    setup(_props, { expose }) {
+      const clientRef = ref(item.value);
+      expose({ setClient: (c: typeof item.value) => (clientRef.value = c) });
+      return () =>
+        h(
+          VueFinalModal,
+          {
+            class: "flex overflow-y-auto",
+            contentClass: "m-auto",
+            focusTrap: false,
+            zIndexFn: ({ index }) => 50 + index,
+          },
+          {
+            default: () =>
+              h(Card, null, {
+                default: () =>
+                  h(CardContent, null, {
+                    default: () =>
+                      h(RequestCertModal, {
+                        onClose: () => {
+                          closeCertModal();
+                          void loadCerts(item.value?.token);
+                        },
+                        client: clientRef.value ?? undefined,
+                      }),
+                  }),
+              }),
+          },
+        );
+    },
+  }),
+});
+
+function onRequestCert() {
+  closeCertModal();
+  nextTick(() => openCertModal());
+}
+
+onUnmounted(destroyCertModal);
+
 const rotateToken = async () => {
   const res = await client.api.clients[":id"]["rotate-token"].$post({
     param: { id: id.value },
@@ -102,7 +158,11 @@ watch(id, () => void reload());
 </script>
 
 <template>
-  <PageDetail :loading="status.loading" :error="status.error" @retry="reload">
+  <PageDetail
+    :loading="status.loading"
+    :error="status.error"
+    :on-retry="reload"
+  >
     <template v-if="item">
       <Card>
         <CardHeader>
@@ -194,6 +254,16 @@ watch(id, () => void reload());
             }}</Badge>
           </CardTitle>
           <CardAction>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-7"
+              title="申请证书"
+              :disabled="!item.token"
+              @click="onRequestCert()"
+            >
+              <Plus class="size-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

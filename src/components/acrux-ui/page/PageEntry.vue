@@ -27,9 +27,9 @@ const props = defineProps<{
   loading?: boolean;
   error?: unknown;
   items?: unknown[] | null;
+  onRetry?: () => void;
+  onCreate?: () => void;
 }>();
-
-defineEmits<{ (e: "retry"): void; (e: "create"): void }>();
 
 const slots = useSlots();
 const errorMessage = computed(() =>
@@ -57,11 +57,21 @@ const errorMessage = computed(() =>
           class="bg-border mx-1 h-6 w-px"
           aria-hidden="true"
         ></div>
-        <Button variant="secondary" aria-label="刷新" @click="$emit('retry')">
+        <Button
+          v-if="onRetry"
+          variant="secondary"
+          aria-label="刷新"
+          @click="onRetry()"
+        >
           <Spinner v-if="loading" />
           <RotateCcw v-else />
         </Button>
-        <Button type="primary" aria-label="新建" @click="$emit('create')">
+        <Button
+          v-if="onCreate"
+          variant="default"
+          aria-label="新建"
+          @click="onCreate()"
+        >
           <Plus />
         </Button>
       </div>
@@ -93,7 +103,7 @@ const errorMessage = computed(() =>
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button variant="secondary" @click="$emit('retry')">
+        <Button v-if="onRetry" variant="secondary" @click="onRetry()">
           <RotateCcw />重试
         </Button>
       </EmptyContent>
@@ -106,7 +116,7 @@ const errorMessage = computed(() =>
         <EmptyTitle>暂无数据</EmptyTitle>
       </EmptyHeader>
       <EmptyContent>
-        <Button variant="secondary" @click="$emit('create')">
+        <Button v-if="onCreate" variant="secondary" @click="onCreate()">
           <Plus />新建
         </Button>
       </EmptyContent>

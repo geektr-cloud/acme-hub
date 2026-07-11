@@ -56,7 +56,11 @@ watch(id, () => void reload());
 </script>
 
 <template>
-  <PageDetail :loading="status.loading" :error="status.error" @retry="reload">
+  <PageDetail
+    :loading="status.loading"
+    :error="status.error"
+    :on-retry="reload"
+  >
     <template v-if="item">
       <Card>
         <CardHeader>
@@ -72,7 +76,7 @@ watch(id, () => void reload());
         </CardHeader>
         <CardContent>
           <DataView>
-            <DataItem label="主域名">
+            <DataItem label="通用名称">
               <code class="font-mono">{{ item.domain || "(无)" }}</code>
             </DataItem>
             <DataItem label="SAN">

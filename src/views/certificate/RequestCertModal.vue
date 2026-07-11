@@ -7,6 +7,7 @@ import {
 import { useClientStore } from "@/stores/clients";
 import { useCertificateStore } from "@/stores/certificates";
 import type { acmeV1 } from "@server/core/acme-v1";
+import type { client as clientSchema } from "@server/core/clients";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -19,20 +20,24 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 
-defineProps<{ onClose: () => void }>();
+const props = defineProps<{
+  onClose: () => void;
+  client?: clientSchema.Client;
+}>();
 
 const { useAll: useAllClients } = useClientStore();
 const { useAll: useAllCerts } = useCertificateStore();
 const [clients] = useAllClients();
 const [, , refreshCerts] = useAllCerts();
 
-const selectedClientId = ref("");
+const selectedClientId = ref(props.client?.id ?? "");
 const domainsInput = ref("");
 const events = ref<acmeV1.CertEvent[]>([]);
 const running = ref(false);
 
-const selectedClient = computed(() =>
-  clients.value.find((c) => c.id === selectedClientId.value),
+const selectedClient = computed(
+  () =>
+    props.client ?? clients.value.find((c) => c.id === selectedClientId.value),
 );
 
 const parsedDomains = computed(() =>
@@ -140,17 +145,19 @@ function submit() {
   });
 }
 
+const showClientSelector = !props.client;
+
 function cancel() {
   close();
 }
 </script>
 
 <template>
-  <div class="w-[560px] max-h-[80vh] flex flex-col gap-4 p-6">
+  <div class="w-[560px] max-h-[80vh] flex flex-col gap-4">
     <h2 class="text-lg font-semibold">请求证书</h2>
 
     <div class="flex flex-col gap-3">
-      <div class="flex flex-col gap-1.5">
+      <div v-if="showClientSelector" class="flex flex-col gap-1.5">
         <label class="text-sm font-medium">客户端</label>
         <Select v-model="selectedClientId" :disabled="running">
           <SelectTrigger>
@@ -201,7 +208,7 @@ api.example.com（每行一个，支持逗号分隔）"
       <div class="flex gap-2">
         <Button
           v-if="!running"
-          :disabled="!selectedClientId || !parsedDomains.length"
+          :disabled="!selectedClient || !parsedDomains.length"
           @click="submit()"
         >
           发起请求
