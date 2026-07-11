@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parsePemBody, pemToBytes, pemFingerprint } from "./pem";
+import {
+  parsePemBody,
+  parsePemBlocks,
+  pemToBytes,
+  pemFingerprint,
+  pemFingerprints,
+} from "./pem";
 
 // ---------- test fixtures (generated with openssl, see pem.test.ts comments) ----------
 
@@ -53,6 +59,26 @@ gBBqMGtuJFRaF4ongtDM
 const X25519 = `-----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VuBCIEIEjqVFUQk5v2JeZx1R6C/pZZ5dS3Z05QJa0IC9k4+C9O
 -----END PRIVATE KEY-----`;
+
+const CHAIN = `-----BEGIN CERTIFICATE-----
+MIIBKDCBzgIULl9uWoiclzwfDXho4QF2tW6UYnYwCgYIKoZIzj0EAwIwEjEQMA4G
+A1UEAwwHVGVzdCBDQTAeFw0yNjA3MTExMDAxMDRaFw0yNjA3MTExMDAxMDRaMBsx
+GTAXBgNVBAMMEGxlYWYuZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMB
+BwNCAARka7k0O8pp/ItZoYae9Mb+XDNREKLc4zsAtfknbs7pp1BDCxLmGjvgWNgk
++hAtQXOjeHLnmzvIe0QD0Y+Uw6PLMAoGCCqGSM49BAMCA0kAMEYCIQC6CP8/S2Lw
+ib7G5wFUICcdip5M2CPpZCxnrPRrB0LxzAIhAPtbzOWazBjEVE5XBCl2KRDAzEls
+0o5cf/o2SnjbmbB7
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIBeDCCAR+gAwIBAgIUS6h8AXKrk6aoNzAWTZwAYosQy0owCgYIKoZIzj0EAwIw
+EjEQMA4GA1UEAwwHVGVzdCBDQTAeFw0yNjA3MTExMDAxMDRaFw0zNjA3MDgxMDAx
+MDRaMBIxEDAOBgNVBAMMB1Rlc3QgQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC
+AAS6PC53DeU/l5eN2Qzt49q0BubQhfiGMOIrvczZIvAa9JXuiq4HMjoggnJn13XD
+eGj2+rOB9JThG8e+tXMENhtIo1MwUTAdBgNVHQ4EFgQU+FFZSVQqUg/BLcOINk0M
+Rq/MtUMwHwYDVR0jBBgwFoAU+FFZSVQqUg/BLcOINk0MRq/MtUMwDwYDVR0TAQH/
+BAUwAwEB/zAKBggqhkjOPQQDAgNHADBEAiAv3zD/Ddx58Iqj435iWoxSlZvIsbu1
+MUPMNtYKRp3GWgIgdV4IlgStHIIhmXjVHT3xVjqQYuhJcye8F2830zrP4JE=
+-----END CERTIFICATE-----`;
 
 // Expected fingerprints in all three encodings.
 // hex: SHA256 of the decoded DER bytes, colon-separated.
@@ -242,5 +268,59 @@ describe("pemFingerprint", () => {
     expect(await pemFingerprint(RSA_2048)).not.toBe(
       await pemFingerprint(EC_P256),
     );
+  });
+});
+
+// ---------- parsePemBlocks ----------
+
+describe("parsePemBlocks", () => {
+  it("returns empty array for non-PEM input", () => {
+    expect(parsePemBlocks("")).toEqual([]);
+    expect(parsePemBlocks("not a pem")).toEqual([]);
+  });
+
+  it("parses single block", () => {
+    const blocks = parsePemBlocks(EC_P256);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.label).toBe("EC PRIVATE KEY");
+    expect(blocks[0]!.raw).toContain("-----BEGIN EC PRIVATE KEY-----");
+  });
+
+  it("parses chain into two blocks", () => {
+    const blocks = parsePemBlocks(CHAIN);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]!.label).toBe("CERTIFICATE");
+    expect(blocks[1]!.label).toBe("CERTIFICATE");
+    expect(blocks[0]!.raw).not.toBe(blocks[1]!.raw);
+  });
+});
+
+// ---------- pemFingerprints ----------
+
+describe("pemFingerprints", () => {
+  it("returns empty array for empty input", async () => {
+    expect(await pemFingerprints("")).toEqual([]);
+  });
+
+  it("returns one entry for single block", async () => {
+    const fps = await pemFingerprints(EC_P256, "base64");
+    expect(fps).toHaveLength(1);
+    expect(fps[0]!.label).toBe("EC PRIVATE KEY");
+    expect(fps[0]!.fingerprint).toBe(EXPECTED.ecP256.base64);
+  });
+
+  it("returns two entries for chain", async () => {
+    const fps = await pemFingerprints(CHAIN, "base64");
+    expect(fps).toHaveLength(2);
+    expect(fps[0]!.fingerprint).not.toBe(fps[1]!.fingerprint);
+  });
+
+  it("chain fingerprints match individually computed values", async () => {
+    const chainFps = await pemFingerprints(CHAIN, "base64");
+    const blocks = parsePemBlocks(CHAIN);
+    for (let i = 0; i < blocks.length; i++) {
+      const single = await pemFingerprint(blocks[i]!.raw, "base64");
+      expect(chainFps[i]!.fingerprint).toBe(single);
+    }
   });
 });

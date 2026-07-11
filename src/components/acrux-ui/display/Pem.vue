@@ -3,7 +3,7 @@ import { useClipboard } from "@vueuse/core";
 import { Check, Copy, Download, Eye, EyeClosed, Minus } from "@lucide/vue";
 import { Icon, IconBtn } from "@/components/acrux-ui/base";
 import { ref, watch } from "vue";
-import { pemFingerprint, type PemEncode } from "./pem";
+import { pemFingerprints, type PemEncode } from "./pem";
 import { VSeparator } from "./DataView.ts";
 
 defineOptions({ name: "PemDisplay" });
@@ -33,12 +33,12 @@ watch(
   (v) => (visible.value = v),
 );
 
-const sha256 = ref("");
+const hashes = ref<{ label: string; fingerprint: string }[]>([]);
 
 watch(
   [() => props.value, () => props.encode],
   async ([v, e]) => {
-    sha256.value = v ? await pemFingerprint(v, e) : "";
+    hashes.value = v ? await pemFingerprints(v, e) : [];
   },
   { immediate: true },
 );
@@ -58,7 +58,11 @@ const downloadFile = () => {
 <template>
   <div v-if="value" class="flex flex-col gap-1 min-w-0">
     <div class="inline-flex items-center gap-1 min-w-0">
-      <code class="truncate text-xs">SHA256:{{ sha256 }}</code>
+      <div class="flex flex-col min-w-0">
+        <code v-for="(h, i) in hashes" :key="i" class="truncate text-xs">
+          SHA256:{{ h.fingerprint }}
+        </code>
+      </div>
       <VSeparator />
       <IconBtn
         v-if="copy"

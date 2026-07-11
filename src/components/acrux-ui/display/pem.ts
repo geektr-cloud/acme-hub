@@ -4,6 +4,29 @@
 
 export type PemEncode = "hex" | "hex16" | "base64";
 
+export interface PemBlock {
+  label: string;
+  raw: string;
+}
+
+/**
+ * Split a (possibly multi-block) PEM string into individual blocks.
+ * Each block retains its full PEM text including headers/footers.
+ */
+export function parsePemBlocks(pem: string): PemBlock[] {
+  if (!pem?.includes("-----BEGIN ")) return [];
+  const re = /(-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----)/g;
+  const blocks: PemBlock[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(pem)) !== null) {
+    const raw = (m[1] ?? "").trim();
+    if (!raw) continue;
+    const label = raw.match(/-----BEGIN ([^-]+)-----/)?.[1] ?? "";
+    blocks.push({ label, raw });
+  }
+  return blocks;
+}
+
 /**
  * Strip PEM headers/footers and whitespace, returning the raw base64 body.
  * Returns "" if the input contains no valid PEM block.
@@ -43,7 +66,7 @@ const toBase64 = (buf: ArrayBuffer) =>
   btoa(String.fromCharCode(...new Uint8Array(buf)));
 
 /**
- * Compute the SHA-256 fingerprint of a PEM string.
+ * Compute the SHA-256 fingerprint of a single PEM string.
  *
  * @param encode  Output format (default "base64"):
  *   - "hex"     — "xx:xx:xx:..." colon-separated hex
@@ -64,4 +87,21 @@ export async function pemFingerprint(
   if (encode === "hex") return toHex(hash);
   if (encode === "hex16") return toHex16(hash);
   return toBase64(hash);
+}
+
+/**
+ * Compute SHA-256 fingerprints for each PEM block in a (possibly multi-block) string.
+ * Returns one entry per block: { label, fingerprint }.
+ */
+export async function pemFingerprints(
+  pem: string,
+  encode: PemEncode = "base64",
+): Promise<{ label: string; fingerprint: string }[]> {
+  const blocks = parsePemBlocks(pem);
+  return Promise.all(
+    blocks.map(async (b) => ({
+      label: b.label,
+      fingerprint: await pemFingerprint(b.raw, encode),
+    })),
+  );
 }
