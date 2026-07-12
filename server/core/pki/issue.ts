@@ -4,6 +4,7 @@ import { HttpErr } from "@acrux/server";
 import { createDnsClient } from "@server/utils/dns-clients";
 import type { DnsClient } from "@server/utils/dns-clients";
 import { DigResolver } from "@server/utils/dig-resolver";
+import { acmeProxyFor } from "@server/utils/acme-proxy";
 import type { DnsCredential } from "@server/db/schema";
 import type { CertEmit } from "./schema";
 
@@ -90,6 +91,7 @@ export async function runAcme(
     directoryUrl: acmeUrl,
     accountKey: creds.privateKey,
     accountUrl: creds.accountUrl,
+    acmeProxy: acmeProxyFor(acmeUrl),
     ...(creds.eab
       ? {
           externalAccountBinding: {

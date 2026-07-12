@@ -1,5 +1,6 @@
 import { Client, crypto } from "@geektr/acme-dns01";
 import { HttpErr } from "@acrux/server";
+import { acmeProxyFor } from "@server/utils/acme-proxy";
 import type { Creds } from "./schema";
 
 // 注册请求的最小输入：与 schema.create.body 兼容的子集（其余字段路由层处理）。
@@ -45,6 +46,7 @@ export const ensureRegistered = async (
   const client = new Client({
     directoryUrl: acmeUrl,
     accountKey: privateKey,
+    acmeProxy: acmeProxyFor(acmeUrl),
     ...(hasEab && eab
       ? { externalAccountBinding: { kid: eab.kid, hmacKey: eab.hmacKey } }
       : {}),
