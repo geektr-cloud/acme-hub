@@ -1,9 +1,9 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "e3257542-d4e9-4503-9f1d-531e5a964a09",
+  "id": "c3e0e1f1-1ce4-4c82-b000-c9739358ea05",
   "prevIds": [
-    "e02ba185-e8ab-4c30-a4ea-be9de4463a16"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
@@ -19,7 +19,11 @@
       "entityType": "tables"
     },
     {
-      "name": "Client",
+      "name": "ConsumerLog",
+      "entityType": "tables"
+    },
+    {
+      "name": "Consumer",
       "entityType": "tables"
     },
     {
@@ -32,6 +36,10 @@
     },
     {
       "name": "ResourceLock",
+      "entityType": "tables"
+    },
+    {
+      "name": "Setting",
       "entityType": "tables"
     },
     {
@@ -180,7 +188,7 @@
       "autoincrement": false,
       "default": "''",
       "generated": null,
-      "name": "key",
+      "name": "privateKey",
       "entityType": "columns",
       "table": "Certificate"
     },
@@ -190,7 +198,7 @@
       "autoincrement": false,
       "default": "''",
       "generated": null,
-      "name": "domain",
+      "name": "commonName",
       "entityType": "columns",
       "table": "Certificate"
     },
@@ -200,7 +208,7 @@
       "autoincrement": false,
       "default": "'[]'",
       "generated": null,
-      "name": "alt",
+      "name": "sans",
       "entityType": "columns",
       "table": "Certificate"
     },
@@ -220,7 +228,7 @@
       "autoincrement": false,
       "default": "''",
       "generated": null,
-      "name": "ca",
+      "name": "chain",
       "entityType": "columns",
       "table": "Certificate"
     },
@@ -230,7 +238,7 @@
       "autoincrement": false,
       "default": "''",
       "generated": null,
-      "name": "cer",
+      "name": "certificate",
       "entityType": "columns",
       "table": "Certificate"
     },
@@ -266,6 +274,16 @@
     },
     {
       "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "renewAt",
+      "entityType": "columns",
+      "table": "Certificate"
+    },
+    {
+      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))",
@@ -292,7 +310,7 @@
       "generated": null,
       "name": "id",
       "entityType": "columns",
-      "table": "Client"
+      "table": "ConsumerLog"
     },
     {
       "type": "text",
@@ -300,9 +318,19 @@
       "autoincrement": false,
       "default": "''",
       "generated": null,
-      "name": "name",
+      "name": "consumerId",
       "entityType": "columns",
-      "table": "Client"
+      "table": "ConsumerLog"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "name": "event",
+      "entityType": "columns",
+      "table": "ConsumerLog"
     },
     {
       "type": "text",
@@ -312,37 +340,7 @@
       "generated": null,
       "name": "description",
       "entityType": "columns",
-      "table": "Client"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "''",
-      "generated": null,
-      "name": "token",
-      "entityType": "columns",
-      "table": "Client"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "'[]'",
-      "generated": null,
-      "name": "allow",
-      "entityType": "columns",
-      "table": "Client"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "acmeAccountId",
-      "entityType": "columns",
-      "table": "Client"
+      "table": "ConsumerLog"
     },
     {
       "type": "text",
@@ -352,7 +350,77 @@
       "generated": null,
       "name": "createdAt",
       "entityType": "columns",
-      "table": "Client"
+      "table": "ConsumerLog"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "Consumer"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "Consumer"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "name": "description",
+      "entityType": "columns",
+      "table": "Consumer"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "name": "token",
+      "entityType": "columns",
+      "table": "Consumer"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'[]'",
+      "generated": null,
+      "name": "allow",
+      "entityType": "columns",
+      "table": "Consumer"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "acmeAccountId",
+      "entityType": "columns",
+      "table": "Consumer"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "Consumer"
     },
     {
       "type": "text",
@@ -362,7 +430,7 @@
       "generated": null,
       "name": "updatedAt",
       "entityType": "columns",
-      "table": "Client"
+      "table": "Consumer"
     },
     {
       "type": "text",
@@ -545,6 +613,46 @@
       "table": "ResourceLock"
     },
     {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "key",
+      "entityType": "columns",
+      "table": "Setting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "Setting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))",
+      "generated": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "table": "Setting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))",
+      "generated": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "table": "Setting"
+    },
+    {
       "columns": [
         "id"
       ],
@@ -576,8 +684,17 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "Client_pk",
-      "table": "Client",
+      "name": "ConsumerLog_pk",
+      "table": "ConsumerLog",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "Consumer_pk",
+      "table": "Consumer",
       "entityType": "pks"
     },
     {
@@ -605,6 +722,15 @@
       "nameExplicit": false,
       "name": "ResourceLock_pk",
       "table": "ResourceLock",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "key"
+      ],
+      "nameExplicit": false,
+      "name": "Setting_pk",
+      "table": "Setting",
       "entityType": "pks"
     },
     {
@@ -666,6 +792,34 @@
     {
       "columns": [
         {
+          "value": "renewAt",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "Certificate_renewAt_idx",
+      "entityType": "indexes",
+      "table": "Certificate"
+    },
+    {
+      "columns": [
+        {
+          "value": "consumerId",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "ConsumerLog_consumerId_idx",
+      "entityType": "indexes",
+      "table": "ConsumerLog"
+    },
+    {
+      "columns": [
+        {
           "value": "acmeAccountId",
           "isExpression": false
         }
@@ -673,9 +827,9 @@
       "isUnique": false,
       "where": null,
       "origin": "manual",
-      "name": "Client_acmeAccountId_idx",
+      "name": "Consumer_acmeAccountId_idx",
       "entityType": "indexes",
-      "table": "Client"
+      "table": "Consumer"
     },
     {
       "columns": [
