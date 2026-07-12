@@ -17,6 +17,9 @@
       "custom_domain": true,
     },
   ],
+  "triggers": {
+    "crons": ["0 */3 * * *"],
+  },
   "observability": {
     "enabled": true,
   },
@@ -26,14 +29,8 @@
     {
       "binding": "DB",
       "database_name": "main",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "899a82e2-2190-4254-aa89-b7a754b85665",
       // "remote": true
-    },
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "kv",
-      "id": "00000000000000000000000000000000",
     },
   ],
   /**
@@ -53,9 +50,9 @@
    * Note: Use secrets to store sensitive data.
    * https://developers.cloudflare.com/workers/configuration/secrets/
    */
-   // "vars": {  "MY_VARIABLE": "production_value" }
+  // "vars": {  "MY_VARIABLE": "production_value" }
   "vars": {
-    "CFPAL_ENDPOINT": ""
+    "CFPAL_ENDPOINT": "",
   },
   /**
    * Service Bindings (communicate between multiple Workers)

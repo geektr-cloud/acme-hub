@@ -124,7 +124,7 @@ pnpm deploy
 
 执行 build + `wrangler deploy`。首次部署前确认：
 
-- `wrangler.jsonc` 的 D1 / KV 占位 id 已替换为真实 id（`wrangler d1 create main` / `wrangler kv namespace create kv`）
+- `wrangler.jsonc` 的 D1 占位 id 已替换为真实 id（`wrangler d1 create main`）
 - 远端 D1 已应用所有迁移
 - `API_TOKEN` secret 已设置
 

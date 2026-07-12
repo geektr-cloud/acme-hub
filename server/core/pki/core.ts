@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, and, isNotNull, gte, lte, ne } from "drizzle-orm";
 import { HttpErr } from "@acrux/server";
 import { crypto } from "@geektr/acme-dns01";
 import { db, schema } from "@server/db";
@@ -10,6 +10,7 @@ import { resolveDnsZone } from "./resolve";
 import { runAcme } from "./issue";
 import type { DomainZone } from "./issue";
 import { certHashOf, lockIdOf } from "./hash";
+import { windowStart, pickSlot, WINDOW_MS, LOOKBACK_WINDOWS } from "./schedule";
 import { pickPrimaryDomain } from "@server/utils/domain";
 import { appendEvent, tailEvents } from "./events";
 import { acquire, release } from "../resource-locks/service";
@@ -17,7 +18,7 @@ import { getRenewWindowRatio } from "../settings/service";
 import { v7 as uuidv7 } from "uuid";
 import type { CertEmit, CertResult, CertListItem } from "./schema";
 
-const ISSUE_TTL_MS = 120_000;
+export const ISSUE_TTL_MS = 120_000;
 
 function buildCertResult(
   certRow: typeof schema.certificates.$inferSelect,
@@ -119,7 +120,33 @@ export async function matchCert(
   return { cert: best, decision };
 }
 
-async function runIssue(
+async function loadWindowOccupancy(
+  t0: number,
+  excludeId: string,
+): Promise<Map<number, number>> {
+  const from = new Date(t0 - LOOKBACK_WINDOWS * WINDOW_MS).toISOString();
+  const to = new Date(t0).toISOString();
+  const rows = await db
+    .select({ renewAt: schema.certificates.renewAt })
+    .from(schema.certificates)
+    .where(
+      and(
+        isNotNull(schema.certificates.renewAt),
+        gte(schema.certificates.renewAt, from),
+        lte(schema.certificates.renewAt, to),
+        ne(schema.certificates.id, excludeId),
+      ),
+    );
+  const map = new Map<number, number>();
+  for (const r of rows) {
+    if (!r.renewAt) continue;
+    const w = windowStart(new Date(r.renewAt).getTime());
+    map.set(w, (map.get(w) ?? 0) + 1);
+  }
+  return map;
+}
+
+export async function runIssue(
   runId: string,
   certificateId: string,
   certHash: string,
@@ -153,6 +180,16 @@ async function runIssue(
       (e) => send(e),
     );
 
+    const issuedInfo = crypto.readCertificateInfo(result.cer);
+    const ratio = await getRenewWindowRatio();
+    const theoretical = renewAt(issuedInfo, ratio).getTime();
+    const occupancy = await loadWindowOccupancy(
+      windowStart(theoretical),
+      certificateId,
+    );
+    const slot = pickSlot(theoretical, occupancy);
+    const renewAtIso = new Date(slot).toISOString();
+
     await db
       .update(schema.certificates)
       .set({
@@ -163,10 +200,10 @@ async function runIssue(
         commonName: pickPrimaryDomain(domains),
         sans: domains,
         certHash,
+        renewAt: renewAtIso,
       })
       .where(eq(schema.certificates.id, certificateId));
 
-    const issuedInfo = crypto.readCertificateInfo(result.cer);
     await send({
       type: "completed",
       result: {

@@ -91,6 +91,8 @@ export const certificates = sqliteTable(
     acmeAccountId: text("acmeAccountId"),
     // 签发去重键：同 account + 同 SAN 集合复用同一 Certificate 行。
     certHash: text("certHash").notNull().default(""),
+    // 预约续期时点（窗口对齐 ISO 时间戳，UTC）。null = 未计算/存量待回填。
+    renewAt: text("renewAt"),
     createdAt: text("createdAt").notNull().default(now),
     updatedAt: text("updatedAt")
       .notNull()
@@ -102,6 +104,7 @@ export const certificates = sqliteTable(
     uniqueIndex("Certificate_certHash_uniq")
       .on(t.certHash)
       .where(sql`certHash != ''`),
+    index("Certificate_renewAt_idx").on(t.renewAt),
   ],
 );
 

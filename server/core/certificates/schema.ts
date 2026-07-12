@@ -16,6 +16,7 @@ const certificate_ = z.string();
 const csr = z.string();
 const acmeAccountId = z.uuid().nullable();
 const certHash = z.string();
+const renewAt = z.string().nullable();
 const createdAt = z.string();
 const updatedAt = z.string();
 
@@ -32,6 +33,7 @@ export const certificate = z.object({
   csr,
   acmeAccountId,
   certHash,
+  renewAt,
   createdAt,
   updatedAt,
 });
@@ -49,6 +51,7 @@ export const newItem = (): Certificate => ({
   csr: "",
   acmeAccountId: null,
   certHash: "",
+  renewAt: null,
   createdAt: "",
   updatedAt: "",
 });

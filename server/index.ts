@@ -12,6 +12,7 @@ import { settingRoutes } from "@server/core/settings/routes";
 import { logRoutes } from "@server/core/logs/routes";
 import { requireAuth } from "@server/middlewares/auth";
 import { ErrorHandler } from "@acrux/server";
+import { scanAndRenew } from "@server/core/pki/cron";
 
 export const app = new Hono()
   .use("/api/*", requireAuth)
@@ -30,4 +31,13 @@ export type AppType = typeof app;
 app.onError(ErrorHandler);
 app.get("/*", () => env.ASSETS.fetch("http://localhost/index.html"));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled: async (
+    _controller: ScheduledController,
+    _env: Env,
+    ctx: ExecutionContext,
+  ) => {
+    ctx.waitUntil(scanAndRenew());
+  },
+} satisfies ExportedHandler<Env>;
