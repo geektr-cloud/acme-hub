@@ -39,6 +39,8 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/acmehub-syncer:${{ env.VERSION }}
             ghcr.io/${{ github.repository }}/acmehub-syncer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   helm:
     runs-on: ubuntu-latest

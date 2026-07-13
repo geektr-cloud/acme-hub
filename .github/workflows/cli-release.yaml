@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25.x"
+          cache: true
+          cache-dependency-path: integrations/acmehub-cli/go.sum
 
       - name: Create semver tag for goreleaser
         run: |

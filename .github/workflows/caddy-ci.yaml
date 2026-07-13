@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25.x"
+          cache: true
+          cache-dependency-path: integrations/caddy/go.sum
 
       - name: Vet
         run: go vet ./...

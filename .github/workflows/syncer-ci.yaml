@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.23.x"
+          cache: true
+          cache-dependency-path: integrations/kubernetes/go.sum
 
       - name: Vet
         run: go vet ./...
