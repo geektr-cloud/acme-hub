@@ -44,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
     needs: docker
     steps:
       - uses: actions/checkout@v7
@@ -69,9 +71,11 @@ jobs:
           helm repo index .helm-publish \
             --url https://geektr-cloud.github.io/acme-hub
 
-      - name: Publish to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .helm-publish
-          keep_files: true
+          path: .helm-publish
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        id: deployment
