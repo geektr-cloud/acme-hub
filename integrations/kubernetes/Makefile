@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/geektr-cloud/acmehub-syncer:latest
+IMG ?= ghcr.io/geektr-cloud/acme-hub/acmehub-syncer:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env goenv))

@@ -1,0 +1,35 @@
+name: CLI CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/acmehub-cli/**"
+      - ".github/workflows/cli-ci.yaml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "integrations/acmehub-cli/**"
+      - ".github/workflows/cli-ci.yaml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/acmehub-cli
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.x"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...

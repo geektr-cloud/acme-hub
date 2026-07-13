@@ -13,8 +13,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	acmev1alpha1 "github.com/geektr-cloud/acmehub-syncer/api/v1alpha1"
-	"github.com/geektr-cloud/acmehub-syncer/internal/controller"
+	acmev1alpha1 "github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1"
+	"github.com/geektr-cloud/acme-hub/integrations/kubernetes/internal/controller"
 )
 
 var (

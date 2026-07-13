@@ -1,4 +1,4 @@
-module github.com/geektr-cloud/caddy-acme-hub
+module github.com/geektr-cloud/acme-hub/integrations/caddy
 
 go 1.24
 

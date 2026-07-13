@@ -5,7 +5,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
 )
 
 // Serve reads requests from conn one at a time, dispatches each against cert,

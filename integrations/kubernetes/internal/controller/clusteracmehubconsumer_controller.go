@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	acmev1alpha1 "github.com/geektr-cloud/acmehub-syncer/api/v1alpha1"
+	acmev1alpha1 "github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1"
 )
 
 // ClusterACMEHubConsumerReconciler reconciles a ClusterACMEHubConsumer object.

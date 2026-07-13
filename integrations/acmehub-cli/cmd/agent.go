@@ -13,10 +13,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/backoff"
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
-	"github.com/geektr-cloud/acmehub-cli/internal/client"
-	"github.com/geektr-cloud/acmehub-cli/internal/hook"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/backoff"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/client"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/hook"
 )
 
 var (

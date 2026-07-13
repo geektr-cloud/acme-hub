@@ -2,7 +2,7 @@ domain: geektr.cloud
 layout:
 - go.kubebuilder.io/v4
 projectName: acmehub-syncer
-repo: github.com/geektr-cloud/acmehub-syncer
+repo: github.com/geektr-cloud/acme-hub/integrations/kubernetes
 resources:
 - api:
     crdVersion: v1
@@ -11,7 +11,7 @@ resources:
   domain: geektr.cloud
   group: acme
   kind: ACMEHubCertificate
-  path: github.com/geektr-cloud/acmehub-syncer/api/v1alpha1
+  path: github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -20,7 +20,7 @@ resources:
   domain: geektr.cloud
   group: acme
   kind: ACMEHubConsumer
-  path: github.com/geektr-cloud/acmehub-syncer/api/v1alpha1
+  path: github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -29,6 +29,6 @@ resources:
   domain: geektr.cloud
   group: acme
   kind: ClusterACMEHubConsumer
-  path: github.com/geektr-cloud/acmehub-syncer/api/v1alpha1
+  path: github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1
   version: v1alpha1
 version: "3"

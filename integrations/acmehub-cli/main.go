@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/geektr-cloud/acmehub-cli/cmd"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/cmd"
 )
 
 func main() {

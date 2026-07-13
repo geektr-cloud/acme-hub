@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
 )
 
 // buildCLI compiles the acmehub-cli binary into a temp dir so the injected
@@ -21,7 +21,7 @@ func buildCLI(t *testing.T) string {
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "acmehub-cli")
 	// The module root is two levels up from internal/hook.
-	cmd := exec.Command("go", "build", "-o", bin, "github.com/geektr-cloud/acmehub-cli")
+	cmd := exec.Command("go", "build", "-o", bin, "github.com/geektr-cloud/acme-hub/integrations/acmehub-cli")
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("build cli: %v", err)

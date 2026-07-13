@@ -1,4 +1,4 @@
-module github.com/geektr-cloud/acmehub-syncer
+module github.com/geektr-cloud/acme-hub/integrations/kubernetes
 
 go 1.23.0
 

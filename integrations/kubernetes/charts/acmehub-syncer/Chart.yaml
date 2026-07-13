@@ -4,9 +4,9 @@ description: Kubernetes operator that syncs ACME certificates from acme-hub into
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-home: https://github.com/geektr-cloud/acmehub-syncer
+home: https://github.com/geektr-cloud/acme-hub
 sources:
-  - https://github.com/geektr-cloud/acmehub-syncer
+  - https://github.com/geektr-cloud/acme-hub
 keywords:
   - acme
   - certificates

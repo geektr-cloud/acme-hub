@@ -1,4 +1,4 @@
-module github.com/geektr-cloud/acmehub-cli
+module github.com/geektr-cloud/acme-hub/integrations/acmehub-cli
 
 go 1.25.7
 

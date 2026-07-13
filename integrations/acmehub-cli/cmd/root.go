@@ -9,10 +9,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "acmehub-cli",
-	Short: "acme-hub certificate fetch agent",
-	Long:  "A consumer CLI for acme-hub: fetch certificate material over the /pki/v1 issue endpoint and hand it to user hooks. Private keys stay in memory only.",
+	Use:     "acmehub-cli",
+	Short:   "acme-hub certificate fetch agent",
+	Long:    "A consumer CLI for acme-hub: fetch certificate material over the /pki/v1 issue endpoint and hand it to user hooks. Private keys stay in memory only.",
+	Version: version,
 }
 
 func init() {

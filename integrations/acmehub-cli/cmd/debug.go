@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/client"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/client"
 )
 
 var (

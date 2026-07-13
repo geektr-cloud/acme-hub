@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
-	"github.com/geektr-cloud/acmehub-cli/internal/client"
-	"github.com/geektr-cloud/acmehub-cli/internal/socket"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/client"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/socket"
 )
 
 var sockCmd = &cobra.Command{

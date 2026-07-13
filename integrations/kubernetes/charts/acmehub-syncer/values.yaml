@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/geektr-cloud/acmehub-syncer
+  repository: ghcr.io/geektr-cloud/acme-hub/acmehub-syncer
   tag: latest
   pullPolicy: IfNotPresent
 

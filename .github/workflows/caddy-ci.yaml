@@ -1,0 +1,35 @@
+name: Caddy CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/caddy/**"
+      - ".github/workflows/caddy-ci.yaml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "integrations/caddy/**"
+      - ".github/workflows/caddy-ci.yaml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/caddy
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24.x"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...

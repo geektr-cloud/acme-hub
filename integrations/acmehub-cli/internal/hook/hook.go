@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
-	"github.com/geektr-cloud/acmehub-cli/internal/socket"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/socket"
 )
 
 // childFD is the fd number the child sees for the inherited socket end. It is

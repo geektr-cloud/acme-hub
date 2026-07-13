@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
 )
 
 // FetchTimeout bounds a single issue request. Cold issuance including DNS-01

@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	acmev1alpha1 "github.com/geektr-cloud/acmehub-syncer/api/v1alpha1"
+	acmev1alpha1 "github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1"
 )
 
 var _ = Describe("ACMEHubCertificate Controller", func() {

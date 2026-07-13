@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geektr-cloud/acmehub-cli/internal/certkit"
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/certkit"
 )
 
 func TestServeSequentialRequests(t *testing.T) {
