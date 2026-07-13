@@ -2,17 +2,13 @@ version: 2
 
 project_name: acmehub-cli
 
-git:
-  tag_sort: -version:refname
-  prerelease_suffix: "-"
-
 builds:
   - main: ./main.go
     binary: acmehub-cli
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/cmd.version={{trimPrefix .Tag "integrations/acmehub-cli/"}}
+      - -s -w -X github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/cmd.version={{.Version}}
     goos:
       - linux
       - darwin
@@ -22,7 +18,7 @@ builds:
       - arm64
 
 release:
-  name_template: "acmehub-cli {{trimPrefix .Tag \"integrations/acmehub-cli/\"}}"
+  name_template: "acmehub-cli {{.Version}}"
 
 archives:
   - formats: [tar.gz]
