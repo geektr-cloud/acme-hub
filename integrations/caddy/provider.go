@@ -159,6 +159,10 @@ func (p *AcmeHubProvider) fetchCert(domain string) (*tls.Certificate, time.Durat
 		return nil, 0, fmt.Errorf("acmehub: x509 key pair: %w", err)
 	}
 
+	// Log certificate details
+	fmt.Printf("acmehub: fetched certificate for %s | SANs: %v | notAfter: %s\n",
+		cr.CommonName, cr.Sans, cr.NotAfter)
+
 	maxAge := parseMaxAge(resp.Header.Get("Cache-Control"))
 	return &tlsCert, maxAge, nil
 }
