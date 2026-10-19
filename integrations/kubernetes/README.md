@@ -202,6 +202,7 @@ Certificates are automatically renewed when they reach 90% of their lifetime (co
 The operator requires:
 - **CRDs**: Full CRUD on all three CRDs + status/finalizers subresources
 - **Secrets**: `get`, `list`, `watch` (read token Secrets) + `create`, `update`, `patch` (write TLS Secrets)
+- **Leader election**: `get`, `list`, `watch`, `create`, `update`, `patch` on `coordination.k8s.io/leases` in the operator namespace
 
 This is cluster-wide Secret access — standard for certificate management operators. See the generated `config/rbac/role.yaml` for exact rules.
 

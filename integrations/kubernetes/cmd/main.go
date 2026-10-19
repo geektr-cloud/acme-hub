@@ -27,6 +27,8 @@ func init() {
 	utilruntime.Must(acmev1alpha1.AddToScheme(scheme))
 }
 
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
