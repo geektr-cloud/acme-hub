@@ -5,7 +5,19 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
-clusterResourceNamespace: acmehub-system
+# Namespace for the operator and ClusterACMEHubConsumer token Secrets.
+# Empty means "use the release namespace" (--namespace / targetNamespace).
+clusterResourceNamespace: ""
+
+# Namespace creation policy:
+#   auto  - create only if missing; skip if it already exists and is not owned
+#           by this release, so pre-created namespaces never conflict.
+#           Uses `lookup`, so rendering depends on live cluster state.
+#   true  - always render the Namespace object (fails if it exists without
+#           Helm ownership metadata).
+#   false - never create it; the namespace must already exist.
+namespace:
+  create: auto
 
 resources:
   limits:

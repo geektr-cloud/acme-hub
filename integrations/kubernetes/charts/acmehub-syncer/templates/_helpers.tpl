@@ -22,6 +22,15 @@ Create a default fully qualified app name.
 {{- end }}
 
 {{/*
+Namespace for the operator and ClusterACMEHubConsumer token Secrets.
+Defaults to the release namespace (the Helm `--namespace` / HelmChart
+`targetNamespace`), so no separate value is needed for the common case.
+*/}}
+{{- define "acmehub-syncer.namespace" -}}
+{{- default .Release.Namespace .Values.clusterResourceNamespace -}}
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "acmehub-syncer.labels" -}}

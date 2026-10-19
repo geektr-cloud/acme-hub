@@ -24,6 +24,65 @@ helm install acmehub-syncer acmehub-syncer/acmehub-syncer \
   --namespace acmehub-system --create-namespace
 ```
 
+The chart deploys into the release namespace (`--namespace`, or
+`targetNamespace` for the k3s Helm controller). Override
+`clusterResourceNamespace` only when the operator and its consumer token Secrets
+should live somewhere else.
+
+> Upgrading from 0.0.x: `clusterResourceNamespace` now defaults to the release
+> namespace instead of the fixed `acmehub-system`. Set it explicitly if your
+> `targetNamespace` differs and you want to keep the old placement.
+
+Namespace creation is automatic:
+
+- `namespace.create: auto` (default) — create the namespace if it is missing.
+  If it already exists, whether created by Helm, another release, or your
+  cluster bootstrap, it is left untouched, so installation never fails on
+  ownership metadata.
+- `namespace.create: true` — always render the `Namespace` object. An existing
+  namespace must then carry this release's ownership metadata.
+- `namespace.create: false` — never create it; the namespace must already exist.
+
+The chart-owned `Namespace` is annotated with
+`helm.sh/resource-policy: keep`, so `helm uninstall` does not delete it.
+
+For the k3s Helm controller, `targetNamespace` is all you need:
+
+```yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: acmehub-syncer
+  namespace: kube-system
+spec:
+  chart: acmehub-syncer
+  repo: https://geektr-cloud.github.io/acme-hub
+  targetNamespace: acmehub-system
+```
+
+`auto` needs permission to `get` namespaces at render time. For GitOps
+renderers or restricted Helm RBAC, use the deterministic form instead:
+
+```yaml
+spec:
+  targetNamespace: acmehub-system
+  createNamespace: true
+  valuesContent: |
+    namespace:
+      create: false
+```
+
+If you want Helm to manage a pre-existing namespace anyway (for example, to
+apply the chart's labels), adopt it first:
+
+```bash
+kubectl label namespace acmehub-system app.kubernetes.io/managed-by=Helm --overwrite
+kubectl annotate namespace acmehub-system \
+  meta.helm.sh/release-name=acmehub-syncer \
+  meta.helm.sh/release-namespace=acmehub-system \
+  helm.sh/resource-policy=keep --overwrite
+```
+
 ## Quick Start
 
 ### 1. Create a consumer token Secret
@@ -79,7 +138,7 @@ metadata:
 spec:
   endpoint: https://acme.geektr.cloud
   secretRef:
-    name: shared-token  # Secret must exist in --cluster-resource-namespace (default: acmehub-system)
+    name: shared-token  # Secret must exist in --cluster-resource-namespace (chart default: release namespace)
 ```
 
 ```yaml
@@ -108,6 +167,13 @@ Certificates are automatically renewed when they reach 90% of their lifetime (co
 | `--metrics-bind-address` | `:8080` | Metrics endpoint address |
 | `--health-probe-bind-address` | `:8081` | Health probe endpoint address |
 | `--leader-elect` | `false` | Enable leader election |
+
+### Helm chart values
+
+| Value | Default | Description |
+|-------|---------|-------------|
+| `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. |
+| `namespace.create` | `auto` | `auto` creates the namespace only when missing; `true` always renders it; `false` never creates it. |
 
 ## RBAC
 

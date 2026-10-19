@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "acmehub-syncer.fullname" . }}
-  namespace: {{ .Values.clusterResourceNamespace }}
+  namespace: {{ include "acmehub-syncer.namespace" . }}
   labels:
     {{- include "acmehub-syncer.labels" . | nindent 4 }}
 spec:
@@ -25,7 +25,7 @@ spec:
             - /manager
           args:
             - --leader-elect
-            - --cluster-resource-namespace={{ .Values.clusterResourceNamespace }}
+            - --cluster-resource-namespace={{ include "acmehub-syncer.namespace" . }}
           ports:
             - containerPort: 8080
               name: metrics
