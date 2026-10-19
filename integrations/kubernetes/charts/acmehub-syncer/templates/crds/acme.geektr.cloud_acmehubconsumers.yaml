@@ -1,20 +1,20 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: clusteracmehubconsumers.acme.geektr.cloud
+    helm.sh/resource-policy: keep
+  name: acmehubconsumers.acme.geektr.cloud
 spec:
   group: acme.geektr.cloud
   names:
-    kind: ClusterACMEHubConsumer
-    listKind: ClusterACMEHubConsumerList
-    plural: clusteracmehubconsumers
+    kind: ACMEHubConsumer
+    listKind: ACMEHubConsumerList
+    plural: acmehubconsumers
     shortNames:
-    - cac
-    singular: clusteracmehubconsumer
-  scope: Cluster
+    - ahc
+    singular: acmehubconsumer
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .spec.endpoint
@@ -29,8 +29,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ClusterACMEHubConsumer is the Schema for the clusteracmehubconsumers
-          API.
+        description: ACMEHubConsumer is the Schema for the acmehubconsumers API.
         properties:
           apiVersion:
             description: |-
@@ -50,13 +49,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: ClusterACMEHubConsumerSpec defines the desired state of ClusterACMEHubConsumer.
+            description: ACMEHubConsumerSpec defines the desired state of ACMEHubConsumer.
             properties:
               endpoint:
                 description: Endpoint is the acme-hub base URL (e.g. https://acme.geektr.cloud).
                 type: string
               secretRef:
-                description: SecretRef references a Secret (name only) in the --cluster-resource-namespace.
+                description: SecretRef references a Secret in the same namespace containing
+                  the consumer token.
                 properties:
                   name:
                     description: 'Name of the Secret containing the acme-hub consumer
@@ -70,8 +70,7 @@ spec:
             - secretRef
             type: object
           status:
-            description: ClusterACMEHubConsumerStatus defines the observed state of
-              ClusterACMEHubConsumer.
+            description: ACMEHubConsumerStatus defines the observed state of ACMEHubConsumer.
             properties:
               conditions:
                 description: Conditions represent the latest available observations

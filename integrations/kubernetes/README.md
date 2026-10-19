@@ -46,6 +46,28 @@ Namespace creation is automatic:
 The chart-owned `Namespace` is annotated with
 `helm.sh/resource-policy: keep`, so `helm uninstall` does not delete it.
 
+The three CRDs are regular chart resources under `templates/crds/` and are also
+annotated with `helm.sh/resource-policy: keep`: Helm upgrades their schemas on
+`helm upgrade` but does not delete them on uninstall.
+
+> Upgrading from 0.1.0: the previous chart installed CRDs from a `crds/`
+> directory, so the existing CRDs have no Helm ownership metadata. On the first
+> 0.1.1 install, set `spec.takeOwnership: true` on the HelmChart (or pass
+> `--take-ownership` to Helm), or adopt the CRDs manually:
+>
+> ```bash
+> for crd in acmehubcertificates.acme.geektr.cloud \
+>            acmehubconsumers.acme.geektr.cloud \
+>            clusteracmehubconsumers.acme.geektr.cloud; do
+>   kubectl label crd "$crd" app.kubernetes.io/managed-by=Helm --overwrite
+>   kubectl annotate crd "$crd" \
+>     meta.helm.sh/release-name=acmehub-syncer \
+>     meta.helm.sh/release-namespace=acmehub-system --overwrite
+> done
+> ```
+>
+> Subsequent upgrades do not need this flag.
+
 For the k3s Helm controller, `targetNamespace` is all you need:
 
 ```yaml
