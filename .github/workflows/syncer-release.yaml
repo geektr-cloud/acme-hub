@@ -60,9 +60,19 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
-      - name: Package Helm Chart
+      - name: Restore existing chart versions
         run: |
           mkdir -p .helm-publish
+          if curl -fsSL https://geektr-cloud.github.io/acme-hub/index.yaml -o /tmp/index.yaml; then
+            grep -oE 'https://geektr-cloud.github.io/acme-hub/[^" ]+\.tgz' /tmp/index.yaml \
+              | sort -u > /tmp/chart-urls.txt || true
+            while read -r url; do
+              curl -fsSL "$url" -o ".helm-publish/$(basename "$url")"
+            done < /tmp/chart-urls.txt
+          fi
+
+      - name: Package Helm Chart
+        run: |
           helm package integrations/kubernetes/charts/acmehub-syncer \
             --version "$CHART_VERSION" \
             --app-version "$CHART_VERSION" \
