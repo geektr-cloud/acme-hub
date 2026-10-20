@@ -33,18 +33,12 @@ should live somewhere else.
 > namespace instead of the fixed `acmehub-system`. Set it explicitly if your
 > `targetNamespace` differs and you want to keep the old placement.
 
-Namespace creation is automatic:
+The chart does **not** create or manage the namespace. It must already exist;
+use `--create-namespace` (Helm CLI) or `createNamespace: true` (k3s HelmChart)
+if you want Helm to create it for you.
 
-- `namespace.create: auto` (default) — create the namespace if it is missing.
-  If it already exists, whether created by Helm, another release, or your
-  cluster bootstrap, it is left untouched, so installation never fails on
-  ownership metadata.
-- `namespace.create: true` — always render the `Namespace` object. An existing
-  namespace must then carry this release's ownership metadata.
-- `namespace.create: false` — never create it; the namespace must already exist.
-
-The chart-owned `Namespace` is annotated with
-`helm.sh/resource-policy: keep`, so `helm uninstall` does not delete it.
+> Upgrading from 0.1.2: the chart no longer creates the namespace. Ensure the
+> target namespace exists before upgrading.
 
 The three CRDs are regular chart resources under `templates/crds/` and are also
 annotated with `helm.sh/resource-policy: keep`: Helm upgrades their schemas on
@@ -68,7 +62,7 @@ annotated with `helm.sh/resource-policy: keep`: Helm upgrades their schemas on
 >
 > Subsequent upgrades do not need this flag.
 
-For the k3s Helm controller, `targetNamespace` is all you need:
+For the k3s Helm controller, create the namespace first or let Helm create it:
 
 ```yaml
 apiVersion: helm.cattle.io/v1
@@ -79,31 +73,13 @@ metadata:
 spec:
   chart: acmehub-syncer
   repo: https://geektr-cloud.github.io/acme-hub
-  targetNamespace: acmehub-system
-```
-
-`auto` needs permission to `get` namespaces at render time. For GitOps
-renderers or restricted Helm RBAC, use the deterministic form instead:
-
-```yaml
-spec:
+  version: "0.1.3"
   targetNamespace: acmehub-system
   createNamespace: true
-  valuesContent: |
-    namespace:
-      create: false
 ```
 
-If you want Helm to manage a pre-existing namespace anyway (for example, to
-apply the chart's labels), adopt it first:
-
-```bash
-kubectl label namespace acmehub-system app.kubernetes.io/managed-by=Helm --overwrite
-kubectl annotate namespace acmehub-system \
-  meta.helm.sh/release-name=acmehub-syncer \
-  meta.helm.sh/release-namespace=acmehub-system \
-  helm.sh/resource-policy=keep --overwrite
-```
+`createNamespace: true` creates the namespace if it is missing; the chart never
+renders or owns a Namespace object.
 
 ## Quick Start
 
@@ -194,8 +170,7 @@ Certificates are automatically renewed when they reach 90% of their lifetime (co
 
 | Value | Default | Description |
 |-------|---------|-------------|
-| `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. |
-| `namespace.create` | `auto` | `auto` creates the namespace only when missing; `true` always renders it; `false` never creates it. |
+| `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. Must already exist. |
 
 ## RBAC
 
