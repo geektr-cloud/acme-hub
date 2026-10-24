@@ -141,24 +141,47 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	logger.Info("secret reconciled", "operation", result)
+	if result == controllerutil.OperationResultNone {
+		logger.V(1).Info("secret unchanged", "operation", result)
+	} else {
+		logger.Info("secret reconciled", "operation", result)
+	}
 
 	notBefore := metav1.NewTime(issueResp.NotBefore)
 	notAfter := metav1.NewTime(issueResp.NotAfter)
-	lastSync := metav1.NewTime(now)
+	statusChanged := result != controllerutil.OperationResultNone
 
-	cert.Status.NotBefore = &notBefore
-	cert.Status.NotAfter = &notAfter
-	cert.Status.LastSyncTime = &lastSync
-	cert.Status.ObservedGeneration = cert.Generation
-	cert.Status.CommonName = issueResp.CommonName
-	setCondition(&cert.Status.Conditions, "Ready", metav1.ConditionTrue, "Synced", "Certificate synced successfully")
-
-	if err := r.Status().Update(ctx, cert); err != nil {
-		return ctrl.Result{}, err
+	if cert.Status.NotBefore == nil || !cert.Status.NotBefore.Time.Equal(notBefore.Time) {
+		cert.Status.NotBefore = &notBefore
+		statusChanged = true
+	}
+	if cert.Status.NotAfter == nil || !cert.Status.NotAfter.Time.Equal(notAfter.Time) {
+		cert.Status.NotAfter = &notAfter
+		statusChanged = true
+	}
+	if result != controllerutil.OperationResultNone || cert.Status.LastSyncTime == nil {
+		lastSync := metav1.NewTime(now)
+		cert.Status.LastSyncTime = &lastSync
+		statusChanged = true
+	}
+	if cert.Status.ObservedGeneration != cert.Generation {
+		cert.Status.ObservedGeneration = cert.Generation
+		statusChanged = true
+	}
+	if cert.Status.CommonName != issueResp.CommonName {
+		cert.Status.CommonName = issueResp.CommonName
+		statusChanged = true
+	}
+	if setCondition(&cert.Status.Conditions, "Ready", metav1.ConditionTrue, "Synced", "Certificate synced successfully") {
+		statusChanged = true
 	}
 
-	r.Recorder.Event(cert, corev1.EventTypeNormal, "Synced", "Certificate synced for "+cert.Spec.Domains[0])
+	if statusChanged {
+		if err := r.Status().Update(ctx, cert); err != nil {
+			return ctrl.Result{}, err
+		}
+		r.Recorder.Event(cert, corev1.EventTypeNormal, "Synced", "Certificate synced for "+cert.Spec.Domains[0])
+	}
 
 	_, after := schedule.RequeueAfter(issueResp.NotBefore, issueResp.NotAfter, now)
 	if after < time.Minute {

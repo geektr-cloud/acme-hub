@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 
+	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -44,6 +45,7 @@ func main() {
 
 	opts := zap.Options{
 		Development: true,
+		Level:       zapcore.InfoLevel,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
