@@ -81,6 +81,23 @@ spec:
 `createNamespace: true` creates the namespace if it is missing; the chart never
 renders or owns a Namespace object.
 
+## Proxy
+
+The operator reads `ACME_HUB_PROXY` at startup. It is used **only** by the
+acme-hub API client; the Kubernetes API client is unaffected. Supported schemes
+are `http`, `https` and `socks5`. An invalid value fails startup.
+
+```yaml
+acmeHubProxy: "http://proxy.example:8080"
+```
+
+When the value is empty the client keeps its default transport behavior,
+including any process-wide `HTTPS_PROXY` / `NO_PROXY`. When set, the dedicated
+client always uses this proxy and ignores `NO_PROXY`.
+
+Avoid putting long-lived proxy credentials in this value: it is stored in the
+Helm release secret and visible via `helm get values`.
+
 ## Quick Start
 
 ### 1. Create a consumer token Secret
@@ -166,11 +183,16 @@ Certificates are automatically renewed when they reach 90% of their lifetime (co
 | `--health-probe-bind-address` | `:8081` | Health probe endpoint address |
 | `--leader-elect` | `false` | Enable leader election |
 
+A cold issuance includes DNS-01 TXT propagation and CA validation and can take
+longer than 60 seconds. The operator allows up to 120 seconds for one issue
+request; cached certificates and renewals return immediately.
+
 ### Helm chart values
 
 | Value | Default | Description |
 |-------|---------|-------------|
 | `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. Must already exist. |
+| `acmeHubProxy` | `""` | Proxy for acme-hub API requests only (`http`, `https`, `socks5`). Empty uses the default transport. |
 
 ## RBAC
 

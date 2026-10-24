@@ -158,6 +158,12 @@ staging:
   token: token-staging
 ```
 
+## 代理
+
+插件读取 `ACME_HUB_PROXY`，只用于调用 acme-hub 的请求，不影响其他 HTTP 流量。支持 `http://`、`https://`、`socks5://`；非法值会让 `Provision` 直接失败。未设置时沿用 Go 默认 transport 行为（包括进程级 `HTTPS_PROXY` / `NO_PROXY`）；设置后专用 client 只走该代理。
+
+单次签发请求超时为 120 秒（冷签发包含 DNS-01 传播和 CA 验证）。
+
 ## acme-hub 侧配置
 
 在 acme-hub 的 `clients` 表创建一个 client，`token` 填 Caddy 侧使用的值，`allow` 填对应域名规则（`fulltext` 或 `suffix`）。

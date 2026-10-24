@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -22,16 +24,19 @@ func init() {
 	caddy.RegisterModule(AcmeHubProvider{})
 }
 
-var httpClient = &http.Client{Timeout: 30 * time.Second}
+// defaultTimeout bounds a single issue request. Cold issuance includes DNS-01
+// TXT propagation and CA validation and can exceed 60s.
+const defaultTimeout = 120 * time.Second
 
 type AcmeHubProvider struct {
 	Profile  string `json:"profile,omitempty"`
 	Endpoint string `json:"endpoint,omitempty"`
 	Token    string `json:"token,omitempty"`
 
-	cfg       ProfileConfig     `json:"-"`
-	cache     *certCache        `json:"-"`
-	wildcards map[string]string `json:"-"` // suffix → wildcard domain, e.g. ".acmehub.anitya.cn" → "*.acmehub.anitya.cn"
+	cfg        ProfileConfig     `json:"-"`
+	cache      *certCache        `json:"-"`
+	wildcards  map[string]string `json:"-"` // suffix → wildcard domain, e.g. ".acmehub.anitya.cn" → "*.acmehub.anitya.cn"
+	httpClient *http.Client      `json:"-"`
 }
 
 func (AcmeHubProvider) CaddyModule() caddy.ModuleInfo {
@@ -57,6 +62,11 @@ func (p *AcmeHubProvider) Provision(ctx caddy.Context) error {
 		}
 		p.cfg = cfg
 	}
+	proxy, err := parseProxy(os.Getenv("ACME_HUB_PROXY"))
+	if err != nil {
+		return err
+	}
+	p.httpClient = newHTTPClient(proxy)
 	p.cache = newCertCache()
 	p.wildcards = make(map[string]string)
 	p.detectWildcards(ctx)
@@ -138,6 +148,10 @@ func (p *AcmeHubProvider) fetchCert(domain string) (*tls.Certificate, time.Durat
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.cfg.Token)
 
+	httpClient := p.httpClient
+	if httpClient == nil {
+		httpClient = newHTTPClient(nil)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("acmehub: http request: %w", err)
@@ -179,6 +193,36 @@ func parseMaxAge(cc string) time.Duration {
 		}
 	}
 	return 0
+}
+
+func parseProxy(raw string) (*url.URL, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("acmehub: parse ACME_HUB_PROXY: %w", err)
+	}
+	switch u.Scheme {
+	case "http", "https", "socks5":
+	default:
+		return nil, fmt.Errorf("acmehub: ACME_HUB_PROXY: unsupported scheme %q (want http, https or socks5)", u.Scheme)
+	}
+	if u.Host == "" {
+		return nil, fmt.Errorf("acmehub: ACME_HUB_PROXY: missing host")
+	}
+	return u, nil
+}
+
+func newHTTPClient(proxy *url.URL) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if proxy != nil {
+		transport.Proxy = http.ProxyURL(proxy)
+	}
+	return &http.Client{
+		Timeout:   defaultTimeout,
+		Transport: transport,
+	}
 }
 
 var (

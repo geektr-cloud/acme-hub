@@ -68,6 +68,7 @@ func fetchAndRun(ctx context.Context, cfg *Config, domains []string) (*certkit.C
 	cert, err := client.Fetch(ctx, client.Config{
 		Endpoint: cfg.Endpoint,
 		Token:    cfg.Token,
+		Proxy:    cfg.Proxy,
 	}, domains)
 	if err != nil {
 		return nil, err

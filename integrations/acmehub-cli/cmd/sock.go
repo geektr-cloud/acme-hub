@@ -87,6 +87,7 @@ func runSockStandalone(args []string) error {
 	cert, err := client.Fetch(context.Background(), client.Config{
 		Endpoint: cfg.Endpoint,
 		Token:    cfg.Token,
+		Proxy:    cfg.Proxy,
 	}, cfg.Domains)
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +32,9 @@ type ACMEHubCertificateReconciler struct {
 	Scheme                   *runtime.Scheme
 	Recorder                 record.EventRecorder
 	ClusterResourceNamespace string
+	AcmeHubProxy             *url.URL
+
+	acmeClient *acmehub.Client
 }
 
 // +kubebuilder:rbac:groups=acme.geektr.cloud,resources=acmehubcertificates,verbs=get;list;watch;create;update;patch;delete
@@ -90,7 +94,10 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// Issue certificate
-	acmeClient := acmehub.NewClient()
+	acmeClient := r.acmeClient
+	if acmeClient == nil {
+		acmeClient = acmehub.NewClientWithProxy(r.AcmeHubProxy)
+	}
 	issueResp, err := acmeClient.Issue(ctx, endpoint, token, cert.Spec.Domains)
 	if err != nil {
 		logger.Error(err, "failed to issue certificate")
@@ -208,6 +215,9 @@ func (r *ACMEHubCertificateReconciler) resolveConsumer(ctx context.Context, cert
 }
 
 func (r *ACMEHubCertificateReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.acmeClient == nil {
+		r.acmeClient = acmehub.NewClientWithProxy(r.AcmeHubProxy)
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{
 			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](

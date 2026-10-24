@@ -7,12 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const issuePath = "/pki/v1/certificates/issue"
+
+// defaultTimeout bounds a single issue request. Cold issuance includes DNS-01
+// TXT propagation and CA validation and can exceed 60s; the acmehub-cli client
+// uses the same 120s budget.
+const defaultTimeout = 120 * time.Second
 
 // IssueResponse represents the response from acme-hub's issue endpoint.
 type IssueResponse struct {
@@ -43,9 +49,44 @@ type Client struct {
 
 // NewClient creates a new acme-hub client with sensible defaults.
 func NewClient() *Client {
-	return &Client{
-		HTTPClient: &http.Client{Timeout: 30 * time.Second},
+	return NewClientWithProxy(nil)
+}
+
+// NewClientWithProxy creates an acme-hub client. When proxy is nil the default
+// transport is used, preserving the process-wide HTTPS_PROXY/NO_PROXY behavior.
+// When proxy is set, only this client is forced through it.
+func NewClientWithProxy(proxy *url.URL) *Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if proxy != nil {
+		transport.Proxy = http.ProxyURL(proxy)
 	}
+	return &Client{
+		HTTPClient: &http.Client{
+			Timeout:   defaultTimeout,
+			Transport: transport,
+		},
+	}
+}
+
+// ParseProxy parses ACME_HUB_PROXY. An empty value disables the dedicated
+// proxy. Supported schemes are http, https and socks5.
+func ParseProxy(raw string) (*url.URL, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse ACME_HUB_PROXY: %w", err)
+	}
+	switch u.Scheme {
+	case "http", "https", "socks5":
+	default:
+		return nil, fmt.Errorf("ACME_HUB_PROXY: unsupported scheme %q (want http, https or socks5)", u.Scheme)
+	}
+	if u.Host == "" {
+		return nil, fmt.Errorf("ACME_HUB_PROXY: missing host")
+	}
+	return u, nil
 }
 
 // Issue calls the acme-hub issue endpoint and returns the certificate response.

@@ -20,6 +20,8 @@ acme-hub 的外部消费者实现，各自独立项目：
 - **`caddy-acme-hub`**（Go）— Caddy `tls.get_certificate` 插件，TLS 握手时调 acme-hub 拉证书。[→ 构建](./integrations/caddy/README.md)
 - **`acmehub-syncer`**（Go）— Kubernetes operator，把 acme-hub 证书同步进集群 TLS Secret。[→ 部署](https://github.com/geektr-cloud/acme-hub/tree/main/integrations/kubernetes) | [Helm chart](https://geektr-cloud.github.io/acme-hub)
 
+三个 Go 客户端都支持 `ACME_HUB_PROXY`（`http` / `https` / `socks5`），仅作用于对 acme-hub 的请求，不影响其他 HTTP 流量。
+
 ## 技术栈
 
 | 层      | 选型                                                           |

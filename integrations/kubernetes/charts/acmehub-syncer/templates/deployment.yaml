@@ -26,6 +26,11 @@ spec:
           args:
             - --leader-elect
             - --cluster-resource-namespace={{ include "acmehub-syncer.namespace" . }}
+          {{- with .Values.acmeHubProxy }}
+          env:
+            - name: ACME_HUB_PROXY
+              value: {{ . | quote }}
+          {{- end }}
           ports:
             - containerPort: 8080
               name: metrics

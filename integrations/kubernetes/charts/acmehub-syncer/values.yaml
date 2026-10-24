@@ -10,6 +10,13 @@ image:
 # The namespace must already exist; the chart does not create it.
 clusterResourceNamespace: ""
 
+# Proxy used only by the acme-hub API client. Supports http://, https:// and
+# socks5://. When empty, the client keeps its default transport behavior
+# (including any process-wide HTTPS_PROXY).
+# Avoid embedding long-lived proxy credentials here: this value is stored in
+# the Helm release secret and is visible via `helm get values`.
+acmeHubProxy: ""
+
 resources:
   limits:
     cpu: 500m

@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/geektr-cloud/acme-hub/integrations/acmehub-cli/internal/client"
 )
 
 var version = "dev"
@@ -44,6 +47,7 @@ func initConfig() {
 type Config struct {
 	Endpoint string
 	Token    string
+	Proxy    *url.URL
 	Domains  []string
 	PostExec string
 	PostRun  string
@@ -62,9 +66,15 @@ func loadConfig() (*Config, error) {
 		return nil, fmt.Errorf("post_exec and post_run are mutually exclusive; set only one")
 	}
 
+	proxy, err := client.ParseProxy(os.Getenv("ACME_HUB_PROXY"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Endpoint: endpoint,
 		Token:    token,
+		Proxy:    proxy,
 		Domains:  domains,
 		PostExec: postExec,
 		PostRun:  postRun,

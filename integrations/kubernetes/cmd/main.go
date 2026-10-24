@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	acmev1alpha1 "github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1"
+	"github.com/geektr-cloud/acme-hub/integrations/kubernetes/internal/acmehub"
 	"github.com/geektr-cloud/acme-hub/integrations/kubernetes/internal/controller"
 )
 
@@ -49,6 +50,12 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	acmeHubProxy, err := acmehub.ParseProxy(os.Getenv("ACME_HUB_PROXY"))
+	if err != nil {
+		setupLog.Error(err, "invalid ACME_HUB_PROXY")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -71,6 +78,7 @@ func main() {
 		Scheme:                   mgr.GetScheme(),
 		Recorder:                 mgr.GetEventRecorderFor("acmehubcertificate-controller"),
 		ClusterResourceNamespace: clusterResourceNamespace,
+		AcmeHubProxy:             acmeHubProxy,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ACMEHubCertificate")
 		os.Exit(1)
