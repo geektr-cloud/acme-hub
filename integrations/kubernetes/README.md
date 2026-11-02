@@ -40,6 +40,11 @@ if you want Helm to create it for you.
 > Upgrading from 0.1.2: the chart no longer creates the namespace. Ensure the
 > target namespace exists before upgrading.
 
+> Upgrading from 0.1.4: `image.tag` now defaults to `v<appVersion>` instead of
+> `latest`, so an upgrade cannot silently reuse an old image cached on the node.
+> If you explicitly set `image.tag`, behavior is unchanged. If you want mutable
+> `latest` behavior, set `image.tag: latest` and `image.pullPolicy: Always`.
+
 The three CRDs are regular chart resources under `templates/crds/` and are also
 annotated with `helm.sh/resource-policy: keep`: Helm upgrades their schemas on
 `helm upgrade` but does not delete them on uninstall.
@@ -192,6 +197,8 @@ request; cached certificates and renewals return immediately.
 | Value | Default | Description |
 |-------|---------|-------------|
 | `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. Must already exist. |
+| `image.tag` | `v<appVersion>` | Operator image tag. Empty defaults to the chart's `appVersion` with a `v` prefix, so upgrades do not reuse a cached `latest` image. |
+| `image.pullPolicy` | `IfNotPresent` | Image pull policy. |
 | `acmeHubProxy` | `""` | Proxy for acme-hub API requests only (`http`, `https`, `socks5`). Empty uses the default transport. |
 
 ## RBAC

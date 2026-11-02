@@ -2,7 +2,9 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/geektr-cloud/acme-hub/acmehub-syncer
-  tag: latest
+  # Empty means v<appVersion>, so each chart version pins the matching
+  # immutable image tag instead of relying on a cached "latest".
+  tag: ""
   pullPolicy: IfNotPresent
 
 # Namespace for the operator and ClusterACMEHubConsumer token Secrets.
