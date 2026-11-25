@@ -28,10 +28,16 @@ spec:
             - --cluster-resource-namespace={{ include "acmehub-syncer.namespace" . }}
             - --max-concurrent-reconciles={{ .Values.maxConcurrentReconciles }}
             - --issue-timeout={{ .Values.issueTimeout }}
-          {{- with .Values.acmeHubProxy }}
+          {{- if or .Values.acmeHubProxy .Values.acmeHubAllowedEndpoints }}
           env:
+            {{- with .Values.acmeHubProxy }}
             - name: ACME_HUB_PROXY
               value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.acmeHubAllowedEndpoints }}
+            - name: ACME_HUB_ALLOWED_ENDPOINTS
+              value: {{ . | quote }}
+            {{- end }}
           {{- end }}
           ports:
             - containerPort: 8080

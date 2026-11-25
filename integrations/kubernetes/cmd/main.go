@@ -44,7 +44,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager, ensuring only one active controller manager.")
 	flag.StringVar(&clusterResourceNamespace, "cluster-resource-namespace", "acmehub-system",
-		"The namespace for ClusterACMEHubConsumer token Secrets.")
+		"The namespace for ClusterACMEHubConsumer credential Secrets.")
 	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 4,
 		"Maximum number of ACMEHubCertificate reconciles to run concurrently.")
 	flag.DurationVar(&issueTimeout, "issue-timeout", 180*time.Second,
@@ -71,6 +71,11 @@ func main() {
 	acmeHubProxy, err := acmehub.ParseProxy(os.Getenv("ACME_HUB_PROXY"))
 	if err != nil {
 		setupLog.Error(err, "invalid ACME_HUB_PROXY")
+		os.Exit(1)
+	}
+	allowedEndpoints, err := acmehub.ParseAllowedEndpoints(os.Getenv("ACME_HUB_ALLOWED_ENDPOINTS"))
+	if err != nil {
+		setupLog.Error(err, "invalid ACME_HUB_ALLOWED_ENDPOINTS")
 		os.Exit(1)
 	}
 
@@ -103,6 +108,7 @@ func main() {
 		Recorder:                 mgr.GetEventRecorderFor("acmehubcertificate-controller"),
 		ClusterResourceNamespace: clusterResourceNamespace,
 		AcmeHubProxy:             acmeHubProxy,
+		AllowedEndpoints:         allowedEndpoints,
 		IssueTimeout:             issueTimeout,
 		MaxConcurrentReconciles:  maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {
@@ -110,7 +116,8 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controller.ACMEHubConsumerReconciler{
-		Client: mgr.GetClient(),
+		Client:           mgr.GetClient(),
+		AllowedEndpoints: allowedEndpoints,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ACMEHubConsumer")
 		os.Exit(1)
@@ -118,6 +125,7 @@ func main() {
 	if err = (&controller.ClusterACMEHubConsumerReconciler{
 		Client:                   mgr.GetClient(),
 		ClusterResourceNamespace: clusterResourceNamespace,
+		AllowedEndpoints:         allowedEndpoints,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterACMEHubConsumer")
 		os.Exit(1)

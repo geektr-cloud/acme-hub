@@ -85,6 +85,37 @@ func TestParseEndpoint(t *testing.T) {
 	}
 }
 
+func TestAllowedEndpoints(t *testing.T) {
+	allowed, err := ParseAllowedEndpoints("https://a.example, https://b.example:8443, https://a.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(allowed) != 2 {
+		t.Fatalf("allowed = %v, want 2 deduplicated origins", allowed)
+	}
+	for _, endpoint := range []string{
+		"https://a.example",
+		"https://a.example/pki/v1/certificates/issue",
+		"https://b.example:8443",
+	} {
+		if err := IsEndpointAllowed(endpoint, allowed); err != nil {
+			t.Errorf("IsEndpointAllowed(%q) = %v", endpoint, err)
+		}
+	}
+	if err := IsEndpointAllowed("https://c.example", allowed); err == nil {
+		t.Fatal("expected endpoint outside allowlist to fail")
+	}
+	if err := IsEndpointAllowed("http://a.example", allowed); err == nil {
+		t.Fatal("expected HTTP endpoint to fail")
+	}
+	if err := IsEndpointAllowed("https://c.example", nil); err != nil {
+		t.Fatalf("empty allowlist rejected HTTPS endpoint: %v", err)
+	}
+	if _, err := ParseAllowedEndpoints("https://a.example/path"); err == nil {
+		t.Fatal("expected allowlist path to be rejected")
+	}
+}
+
 func TestNewClientWithProxy(t *testing.T) {
 	proxy, err := url.Parse("http://proxy.example:8080")
 	if err != nil {

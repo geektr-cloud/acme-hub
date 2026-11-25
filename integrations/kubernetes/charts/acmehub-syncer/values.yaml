@@ -7,7 +7,7 @@ image:
   tag: ""
   pullPolicy: IfNotPresent
 
-# Namespace for the operator and ClusterACMEHubConsumer token Secrets.
+# Namespace for the operator and ClusterACMEHubConsumer credential Secrets.
 # Empty means "use the release namespace" (--namespace / targetNamespace).
 # The namespace must already exist; the chart does not create it.
 clusterResourceNamespace: ""
@@ -18,6 +18,11 @@ clusterResourceNamespace: ""
 # Avoid embedding long-lived proxy credentials here: this value is stored in
 # the Helm release secret and is visible via `helm get values`.
 acmeHubProxy: ""
+
+# Optional comma-separated HTTPS origins allowed as acme-hub endpoints, for
+# example "https://acme.example.com,https://staging.example.com:8443".
+# Empty allows any HTTPS endpoint.
+acmeHubAllowedEndpoints: ""
 
 # Maximum number of ACMEHubCertificate reconciles to run concurrently.
 maxConcurrentReconciles: 4

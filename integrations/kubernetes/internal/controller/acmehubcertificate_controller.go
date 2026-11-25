@@ -36,6 +36,7 @@ type ACMEHubCertificateReconciler struct {
 	Recorder                 record.EventRecorder
 	ClusterResourceNamespace string
 	AcmeHubProxy             *url.URL
+	AllowedEndpoints         []string
 	IssueTimeout             time.Duration
 	MaxConcurrentReconciles  int
 
@@ -225,8 +226,8 @@ func (r *ACMEHubCertificateReconciler) resolveConsumer(ctx context.Context, cert
 		kind = "ACMEHubConsumer"
 	}
 
-	var tokenSecretNamespace string
-	var tokenSecretName string
+	var credentialNamespace string
+	var credentialName string
 
 	switch kind {
 	case "ACMEHubConsumer":
@@ -235,28 +236,25 @@ func (r *ACMEHubCertificateReconciler) resolveConsumer(ctx context.Context, cert
 		if err := r.Get(ctx, key, consumer); err != nil {
 			return "", "", fmt.Errorf("get ACMEHubConsumer %s: %w", key, err)
 		}
-		endpoint = consumer.Spec.Endpoint
-		tokenSecretNamespace = consumer.Namespace
-		tokenSecretName = consumer.Spec.SecretRef.Name
+		credentialNamespace = consumer.Namespace
+		credentialName = consumer.Spec.SecretRef.Name
 	case "ClusterACMEHubConsumer":
 		consumer := &acmev1alpha1.ClusterACMEHubConsumer{}
 		key := types.NamespacedName{Name: cert.Spec.ConsumerRef.Name}
 		if err := r.Get(ctx, key, consumer); err != nil {
 			return "", "", fmt.Errorf("get ClusterACMEHubConsumer %s: %w", key, err)
 		}
-		endpoint = consumer.Spec.Endpoint
-		tokenSecretNamespace = r.ClusterResourceNamespace
-		tokenSecretName = consumer.Spec.SecretRef.Name
+		credentialNamespace = r.ClusterResourceNamespace
+		credentialName = consumer.Spec.SecretRef.Name
 	default:
 		return "", "", fmt.Errorf("unknown consumer kind: %s", kind)
 	}
 
-	if _, err := acmehub.ParseEndpoint(endpoint); err != nil {
-		return "", "", fmt.Errorf("invalid endpoint: %w", err)
-	}
-
-	token, err = loadConsumerToken(ctx, r.Client, tokenSecretNamespace, tokenSecretName)
+	endpoint, token, err = loadConsumerCredentials(ctx, r.Client, credentialNamespace, credentialName)
 	if err != nil {
+		return "", "", err
+	}
+	if err := acmehub.IsEndpointAllowed(endpoint, r.AllowedEndpoints); err != nil {
 		return "", "", err
 	}
 

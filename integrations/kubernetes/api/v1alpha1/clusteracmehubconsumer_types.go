@@ -6,11 +6,8 @@ import (
 
 // ClusterACMEHubConsumerSpec defines the desired state of ClusterACMEHubConsumer.
 type ClusterACMEHubConsumerSpec struct {
-	// Endpoint is the acme-hub base URL (e.g. https://acme.geektr.cloud).
-	// +kubebuilder:validation:Required
-	Endpoint string `json:"endpoint"`
-
-	// SecretRef references a Secret (name only) in the --cluster-resource-namespace.
+	// SecretRef references a consumer credential Secret (endpoint and token)
+	// in the --cluster-resource-namespace.
 	// +kubebuilder:validation:Required
 	SecretRef SecretReference `json:"secretRef"`
 }
@@ -29,7 +26,7 @@ type ClusterACMEHubConsumerStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=cac
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="ENDPOINT",type="string",JSONPath=".spec.endpoint"
+// +kubebuilder:printcolumn:name="SECRET",type="string",JSONPath=".spec.secretRef.name"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 

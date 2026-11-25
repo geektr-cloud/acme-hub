@@ -4,20 +4,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SecretReference identifies a Secret in the same namespace.
+// SecretReference identifies a consumer credential Secret in the same namespace.
 type SecretReference struct {
-	// Name of the Secret containing the acme-hub consumer token (key: "token").
+	// Name of the Secret containing the acme-hub endpoint and token
+	// (keys: "endpoint", "token").
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 }
 
 // ACMEHubConsumerSpec defines the desired state of ACMEHubConsumer.
 type ACMEHubConsumerSpec struct {
-	// Endpoint is the acme-hub base URL (e.g. https://acme.geektr.cloud).
-	// +kubebuilder:validation:Required
-	Endpoint string `json:"endpoint"`
-
-	// SecretRef references a Secret in the same namespace containing the consumer token.
+	// SecretRef references a Secret in the same namespace containing the acme-hub
+	// endpoint and token.
 	// +kubebuilder:validation:Required
 	SecretRef SecretReference `json:"secretRef"`
 }
@@ -36,7 +35,7 @@ type ACMEHubConsumerStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced,shortName=ahc
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="ENDPOINT",type="string",JSONPath=".spec.endpoint"
+// +kubebuilder:printcolumn:name="SECRET",type="string",JSONPath=".spec.secretRef.name"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 

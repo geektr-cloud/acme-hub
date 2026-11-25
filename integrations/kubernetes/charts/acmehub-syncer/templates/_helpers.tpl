@@ -22,7 +22,7 @@ Create a default fully qualified app name.
 {{- end }}
 
 {{/*
-Namespace for the operator and ClusterACMEHubConsumer token Secrets.
+Namespace for the operator and ClusterACMEHubConsumer credential Secrets.
 Defaults to the release namespace (the Helm `--namespace` / HelmChart
 `targetNamespace`), so no separate value is needed for the common case.
 The namespace must already exist; the chart does not create it.

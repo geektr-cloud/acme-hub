@@ -21,6 +21,7 @@ import (
 type ClusterACMEHubConsumerReconciler struct {
 	client.Client
 	ClusterResourceNamespace string
+	AllowedEndpoints         []string
 }
 
 // +kubebuilder:rbac:groups=acme.geektr.cloud,resources=clusteracmehubconsumers,verbs=get;list;watch;create;update;patch;delete
@@ -41,23 +42,23 @@ func (r *ClusterACMEHubConsumerReconciler) Reconcile(ctx context.Context, req ct
 	reason := "Valid"
 	message := "Consumer is valid"
 
-	if _, err := acmehub.ParseEndpoint(consumer.Spec.Endpoint); err != nil {
+	endpoint, _, err := loadConsumerCredentials(ctx, r.Client, r.ClusterResourceNamespace, consumer.Spec.SecretRef.Name)
+	if err != nil {
+		ready = false
+		reason = "SecretNotFound"
+		switch {
+		case errors.Is(err, errEmptyEndpoint):
+			reason = "InvalidEndpoint"
+		case errors.Is(err, errEmptyToken):
+			reason = "InvalidSecret"
+		case !apierrors.IsNotFound(err):
+			reason = "SecretError"
+		}
+		message = err.Error()
+	} else if err := acmehub.IsEndpointAllowed(endpoint, r.AllowedEndpoints); err != nil {
 		ready = false
 		reason = "InvalidEndpoint"
 		message = err.Error()
-	}
-
-	if ready {
-		if _, err := loadConsumerToken(ctx, r.Client, r.ClusterResourceNamespace, consumer.Spec.SecretRef.Name); err != nil {
-			ready = false
-			reason = "SecretNotFound"
-			if errors.Is(err, errEmptyToken) {
-				reason = "InvalidSecret"
-			} else if !apierrors.IsNotFound(err) {
-				reason = "SecretError"
-			}
-			message = err.Error()
-		}
 	}
 
 	status := metav1.ConditionFalse

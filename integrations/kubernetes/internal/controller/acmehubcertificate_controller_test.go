@@ -65,14 +65,15 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 		)
 
 		BeforeEach(func() {
-			// Create token Secret
+			// Create consumer credential Secret
 			tokenSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      secretName,
 					Namespace: consumerNS,
 				},
 				StringData: map[string]string{
-					"token": "test-token-123",
+					"endpoint": mockServer.URL,
+					"token":    "test-token-123",
 				},
 			}
 			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
@@ -84,7 +85,6 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 					Namespace: consumerNS,
 				},
 				Spec: acmev1alpha1.ACMEHubConsumerSpec{
-					Endpoint: mockServer.URL,
 					SecretRef: acmev1alpha1.SecretReference{
 						Name: secretName,
 					},
@@ -306,7 +306,7 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 		})
 	})
 
-	Context("When the token Secret is created after the consumer", func() {
+	Context("When the credential Secret is created after the consumer", func() {
 		const (
 			consumerName    = "late-consumer"
 			certName        = "late-cert"
@@ -319,7 +319,6 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 			consumer := &acmev1alpha1.ACMEHubConsumer{
 				ObjectMeta: metav1.ObjectMeta{Name: consumerName, Namespace: consumerNS},
 				Spec: acmev1alpha1.ACMEHubConsumerSpec{
-					Endpoint:  mockServer.URL,
 					SecretRef: acmev1alpha1.SecretReference{Name: tokenSecretName},
 				},
 			}
@@ -358,7 +357,7 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 			}
 		})
 
-		It("Should retry immediately when the token Secret appears", func() {
+		It("Should retry immediately when the credential Secret appears", func() {
 			Eventually(func() bool {
 				updated := &acmev1alpha1.ACMEHubCertificate{}
 				if err := k8sClient.Get(ctx, types.NamespacedName{Name: certName, Namespace: consumerNS}, updated); err != nil {
@@ -372,7 +371,10 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 
 			tokenSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: tokenSecretName, Namespace: consumerNS},
-				StringData: map[string]string{"token": "late-token"},
+				StringData: map[string]string{
+					"endpoint": mockServer.URL,
+					"token":    "late-token",
+				},
 			}
 			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
 
@@ -409,14 +411,15 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 				})
 			}))
 
-			// Create token Secret
+			// Create consumer credential Secret
 			tokenSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "error-token-secret",
 					Namespace: consumerNS,
 				},
 				StringData: map[string]string{
-					"token": "test-token",
+					"endpoint": mockServer.URL,
+					"token":    "test-token",
 				},
 			}
 			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
@@ -428,7 +431,6 @@ var _ = Describe("ACMEHubCertificate Controller", func() {
 					Namespace: consumerNS,
 				},
 				Spec: acmev1alpha1.ACMEHubConsumerSpec{
-					Endpoint: mockServer.URL,
 					SecretRef: acmev1alpha1.SecretReference{
 						Name: "error-token-secret",
 					},

@@ -12,8 +12,8 @@ This is conceptually identical to the [Caddy plugin](../caddy/) — both consume
 
 | CRD | Scope | Description |
 |-----|-------|-------------|
-| `ACMEHubConsumer` | Namespaced | References an acme-hub endpoint + token Secret in the same namespace |
-| `ClusterACMEHubConsumer` | Cluster | References an acme-hub endpoint + token Secret in `--cluster-resource-namespace` |
+| `ACMEHubConsumer` | Namespaced | References a consumer credential Secret (`endpoint` + `token`) in the same namespace |
+| `ClusterACMEHubConsumer` | Cluster | References a consumer credential Secret (`endpoint` + `token`) in `--cluster-resource-namespace` |
 | `ACMEHubCertificate` | Namespaced | Declares desired certificate (domains, Secret name, consumer ref) |
 
 ## Installation
@@ -26,7 +26,7 @@ helm install acmehub-syncer acmehub-syncer/acmehub-syncer \
 
 The chart deploys into the release namespace (`--namespace`, or
 `targetNamespace` for the k3s Helm controller). Override
-`clusterResourceNamespace` only when the operator and its consumer token Secrets
+`clusterResourceNamespace` only when the operator and its consumer credential Secrets
 should live somewhere else.
 
 > Upgrading from 0.0.x: `clusterResourceNamespace` now defaults to the release
@@ -78,7 +78,7 @@ metadata:
 spec:
   chart: acmehub-syncer
   repo: https://geektr-cloud.github.io/acme-hub
-  version: "0.1.6"
+  version: "0.1.7"
   targetNamespace: acmehub-system
   createNamespace: true
 ```
@@ -103,14 +103,33 @@ client always uses this proxy and ignores `NO_PROXY`.
 Avoid putting long-lived proxy credentials in this value: it is stored in the
 Helm release secret and visible via `helm get values`.
 
+## Endpoint allowlist
+
+`ACME_HUB_ALLOWED_ENDPOINTS` optionally restricts which acme-hub origins the
+operator will call. It is a comma-separated list of exact `scheme://host[:port]`
+origins; paths and wildcards are not supported. Empty allows any HTTPS endpoint.
+
+```yaml
+acmeHubAllowedEndpoints: "https://acme.geektr.cloud,https://staging-acme.geektr.cloud"
+```
+
+Both the consumer status check and certificate issue path validate the endpoint.
+An endpoint outside the allowlist makes the consumer NotReady and the certificate
+issue fail without sending the token anywhere.
+
 ## Quick Start
 
-### 1. Create a consumer token Secret
+### 1. Create a consumer credential Secret
 
 ```bash
-kubectl create secret generic my-acme-hub-token \
+kubectl create secret generic my-acme-hub-credentials \
+  --from-literal=endpoint=https://acme.geektr.cloud \
   --from-literal=token=YOUR_ACME_HUB_TOKEN
 ```
+
+The Secret must contain both `endpoint` and `token`. The endpoint must use
+HTTPS. Set `ACME_HUB_ALLOWED_ENDPOINTS` on the operator to restrict which
+origins are accepted.
 
 ### 2. Create an ACMEHubConsumer
 
@@ -121,9 +140,8 @@ metadata:
   name: my-consumer
   namespace: default
 spec:
-  endpoint: https://acme.geektr.cloud
   secretRef:
-    name: my-acme-hub-token
+    name: my-acme-hub-credentials
 ```
 
 ### 3. Create an ACMEHubCertificate
@@ -162,9 +180,10 @@ kind: ClusterACMEHubConsumer
 metadata:
   name: shared-consumer
 spec:
-  endpoint: https://acme.geektr.cloud
   secretRef:
-    name: shared-token  # Secret must exist in --cluster-resource-namespace (chart default: release namespace)
+    # The Secret must contain endpoint + token and must exist in
+    # --cluster-resource-namespace (chart default: release namespace).
+    name: shared-credentials
 ```
 
 ```yaml
@@ -189,7 +208,7 @@ Certificates are automatically renewed when they reach 90% of their lifetime (co
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--cluster-resource-namespace` | `acmehub-system` | Namespace for ClusterACMEHubConsumer token Secrets |
+| `--cluster-resource-namespace` | `acmehub-system` | Namespace for ClusterACMEHubConsumer credential Secrets |
 | `--max-concurrent-reconciles` | `4` | Maximum concurrent `ACMEHubCertificate` reconciles |
 | `--issue-timeout` | `180s` | Timeout for one acme-hub issue request |
 | `--metrics-bind-address` | `:8080` | Metrics endpoint address |
@@ -204,18 +223,19 @@ request; cached certificates and renewals return immediately.
 
 | Value | Default | Description |
 |-------|---------|-------------|
-| `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. Must already exist. |
+| `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer credential Secrets. Empty means the release namespace. Must already exist. |
 | `image.tag` | `v<appVersion>` | Operator image tag. Empty defaults to the chart's `appVersion` with a `v` prefix, so upgrades do not reuse a cached `latest` image. |
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy. |
 | `maxConcurrentReconciles` | `4` | Maximum concurrent `ACMEHubCertificate` reconciles. |
 | `issueTimeout` | `180s` | Timeout for one acme-hub issue request. |
 | `acmeHubProxy` | `""` | Proxy for acme-hub API requests only (`http`, `https`, `socks5`). Empty uses the default transport. |
+| `acmeHubAllowedEndpoints` | `""` | Comma-separated HTTPS origins allowed as acme-hub endpoints. Empty allows any HTTPS endpoint. |
 
 ## RBAC
 
 The operator requires:
 - **CRDs**: Full CRUD on all three CRDs + status/finalizers subresources
-- **Secrets**: `get`, `list`, `watch` (read token Secrets) + `create`, `update`, `patch`, `delete` (manage owned TLS Secrets)
+- **Secrets**: `get`, `list`, `watch` (read consumer credential Secrets) + `create`, `update`, `patch`, `delete` (manage owned TLS Secrets)
 - **Leader election**: `get`, `list`, `watch`, `create`, `update`, `patch` on `coordination.k8s.io/leases` in the operator namespace
 
 This is cluster-wide Secret access — standard for certificate management operators. See the generated `config/rbac/role.yaml` for exact rules.
@@ -224,7 +244,8 @@ This is cluster-wide Secret access — standard for certificate management opera
 
 - **Private keys in etcd**: The issued certificate private keys are stored in TLS Secrets (etcd). Enable [EncryptionConfiguration](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) to encrypt etcd at rest.
 - **HTTPS only**: The operator to acme-hub communication must use HTTPS; non-HTTPS endpoints are rejected. Private keys are transmitted in the response body.
-- **RBAC**: Token Secrets and TLS Secrets are both sensitive. Scope RBAC permissions carefully. Permission to create `ACMEHubConsumer` or `ACMEHubCertificate` is effectively permission to use Secrets in that namespace; restrict those CRD create permissions accordingly.
+- **Credentials in Secrets**: The endpoint and token live together in a consumer credential Secret. A principal that can patch that Secret can still change the endpoint, so configure `ACME_HUB_ALLOWED_ENDPOINTS` when multiple users manage consumers.
+- **RBAC**: Consumer credential Secrets and TLS Secrets are both sensitive. Scope RBAC permissions carefully. Permission to create `ACMEHubConsumer` or `ACMEHubCertificate` is effectively permission to use Secrets in that namespace; restrict those CRD create permissions accordingly.
 - **Managed Secrets**: Only Secrets annotated `acme.geektr.cloud/managed: "true"` or already controlled by the `ACMEHubCertificate` are overwritten or deleted.
 
 ## Development
@@ -257,4 +278,4 @@ make fmt vet
 | Config | Caddyfile / JSON | CRD YAML |
 | Certificate store | In-memory cache | Kubernetes Secrets |
 | Renewal | On TLS handshake | Scheduled (90% lifetime) |
-| Auth | Endpoint + token in config | Secret reference in CRD |
+| Auth | Endpoint + token in config | Consumer credential Secret reference |
