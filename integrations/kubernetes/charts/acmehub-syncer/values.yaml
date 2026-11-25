@@ -19,6 +19,12 @@ clusterResourceNamespace: ""
 # the Helm release secret and is visible via `helm get values`.
 acmeHubProxy: ""
 
+# Maximum number of ACMEHubCertificate reconciles to run concurrently.
+maxConcurrentReconciles: 4
+
+# Timeout for a single acme-hub certificate issue request.
+issueTimeout: 180s
+
 resources:
   limits:
     cpu: 500m

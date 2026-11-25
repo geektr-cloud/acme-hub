@@ -60,6 +60,9 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
+      - name: Lint chart
+        run: helm lint --strict integrations/kubernetes/charts/acmehub-syncer
+
       - name: Restore existing chart versions
         run: |
           mkdir -p .helm-publish

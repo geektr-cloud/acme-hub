@@ -78,7 +78,7 @@ metadata:
 spec:
   chart: acmehub-syncer
   repo: https://geektr-cloud.github.io/acme-hub
-  version: "0.1.3"
+  version: "0.1.6"
   targetNamespace: acmehub-system
   createNamespace: true
 ```
@@ -146,6 +146,12 @@ spec:
 
 The operator will call acme-hub's issue endpoint and create a `kubernetes.io/tls` Secret named `my-tls-secret`.
 
+The operator marks the Secret with `acme.geektr.cloud/managed: "true"` and a
+controller owner reference. It refuses to overwrite an existing Secret that
+lacks that annotation; add the annotation explicitly to opt an existing Secret
+into management. Deleting the `ACMEHubCertificate` deletes the Secret only when
+the operator owns it.
+
 ### Using ClusterACMEHubConsumer
 
 For cluster-wide shared consumers:
@@ -184,12 +190,14 @@ Certificates are automatically renewed when they reach 90% of their lifetime (co
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--cluster-resource-namespace` | `acmehub-system` | Namespace for ClusterACMEHubConsumer token Secrets |
+| `--max-concurrent-reconciles` | `4` | Maximum concurrent `ACMEHubCertificate` reconciles |
+| `--issue-timeout` | `180s` | Timeout for one acme-hub issue request |
 | `--metrics-bind-address` | `:8080` | Metrics endpoint address |
 | `--health-probe-bind-address` | `:8081` | Health probe endpoint address |
 | `--leader-elect` | `false` | Enable leader election |
 
 A cold issuance includes DNS-01 TXT propagation and CA validation and can take
-longer than 60 seconds. The operator allows up to 120 seconds for one issue
+longer than 60 seconds. The operator allows up to 180 seconds for one issue
 request; cached certificates and renewals return immediately.
 
 ### Helm chart values
@@ -199,13 +207,15 @@ request; cached certificates and renewals return immediately.
 | `clusterResourceNamespace` | `""` | Namespace for the operator and ClusterACMEHubConsumer token Secrets. Empty means the release namespace. Must already exist. |
 | `image.tag` | `v<appVersion>` | Operator image tag. Empty defaults to the chart's `appVersion` with a `v` prefix, so upgrades do not reuse a cached `latest` image. |
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy. |
+| `maxConcurrentReconciles` | `4` | Maximum concurrent `ACMEHubCertificate` reconciles. |
+| `issueTimeout` | `180s` | Timeout for one acme-hub issue request. |
 | `acmeHubProxy` | `""` | Proxy for acme-hub API requests only (`http`, `https`, `socks5`). Empty uses the default transport. |
 
 ## RBAC
 
 The operator requires:
 - **CRDs**: Full CRUD on all three CRDs + status/finalizers subresources
-- **Secrets**: `get`, `list`, `watch` (read token Secrets) + `create`, `update`, `patch` (write TLS Secrets)
+- **Secrets**: `get`, `list`, `watch` (read token Secrets) + `create`, `update`, `patch`, `delete` (manage owned TLS Secrets)
 - **Leader election**: `get`, `list`, `watch`, `create`, `update`, `patch` on `coordination.k8s.io/leases` in the operator namespace
 
 This is cluster-wide Secret access — standard for certificate management operators. See the generated `config/rbac/role.yaml` for exact rules.
@@ -213,8 +223,9 @@ This is cluster-wide Secret access — standard for certificate management opera
 ## Security Notes
 
 - **Private keys in etcd**: The issued certificate private keys are stored in TLS Secrets (etcd). Enable [EncryptionConfiguration](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) to encrypt etcd at rest.
-- **HTTPS only**: The operator to acme-hub communication must use HTTPS (`endpoint` should start with `https://`). Private keys are transmitted in the response body.
-- **RBAC**: Token Secrets and TLS Secrets are both sensitive. Scope RBAC permissions carefully.
+- **HTTPS only**: The operator to acme-hub communication must use HTTPS; non-HTTPS endpoints are rejected. Private keys are transmitted in the response body.
+- **RBAC**: Token Secrets and TLS Secrets are both sensitive. Scope RBAC permissions carefully. Permission to create `ACMEHubConsumer` or `ACMEHubCertificate` is effectively permission to use Secrets in that namespace; restrict those CRD create permissions accordingly.
+- **Managed Secrets**: Only Secrets annotated `acme.geektr.cloud/managed: "true"` or already controlled by the `ACMEHubCertificate` are overwritten or deleted.
 
 ## Development
 

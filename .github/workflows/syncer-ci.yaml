@@ -23,12 +23,27 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.23.x"
+          go-version: "1.27.x"
           cache: true
           cache-dependency-path: integrations/kubernetes/go.sum
 
+      - name: Check go.mod
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
       - name: Vet
         run: go vet ./...
+
+      - name: Lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          golangci-lint run ./...
+
+      - name: Vulnerability scan
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
       - name: Setup envtest
         run: |
@@ -40,3 +55,21 @@ jobs:
         run: make test
         env:
           KUBEBUILDER_ASSETS: ${{ env.KUBEBUILDER_ASSETS }}
+
+      - name: Check generated files
+        run: git diff --exit-code
+
+      - name: Race test
+        run: go test -race -shuffle=on -count=1 ./...
+        env:
+          KUBEBUILDER_ASSETS: ${{ env.KUBEBUILDER_ASSETS }}
+
+      - uses: azure/setup-helm@v5
+
+      - name: Helm lint and render
+        run: |
+          helm lint --strict charts/acmehub-syncer
+          helm template acmehub-syncer charts/acmehub-syncer --namespace acmehub-system >/dev/null
+
+      - name: Docker build
+        run: docker build -t acmehub-syncer:ci .

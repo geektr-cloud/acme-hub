@@ -1,4 +1,4 @@
-FROM golang:1.23 AS builder
+FROM golang:1.27.4 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -10,7 +10,7 @@ COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -a -o manager cmd/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -trimpath -o manager cmd/main.go
 
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /

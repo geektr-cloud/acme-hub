@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"crypto/tls"
+	"net/http"
 	"path/filepath"
 	"testing"
 	"time"
@@ -20,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	acmev1alpha1 "github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1"
+	"github.com/geektr-cloud/acme-hub/integrations/kubernetes/internal/acmehub"
 )
 
 var (
@@ -68,23 +71,33 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&ACMEHubCertificateReconciler{
+	Expect(SetupIndexes(ctx, mgr)).To(Succeed())
+
+	testClient := acmehub.NewClient()
+	testClient.HTTPClient.Transport = &http.Transport{
+		// #nosec G402 -- tests use httptest's self-signed certificates.
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	certReconciler := &ACMEHubCertificateReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		Recorder:                 mgr.GetEventRecorderFor("acmehubcertificate-controller"),
 		ClusterResourceNamespace: "acmehub-system",
-	}).SetupWithManager(mgr)
+		MaxConcurrentReconciles:  4,
+	}
+	certReconciler.acmeClient = testClient
+	err = certReconciler.SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&ACMEHubConsumerReconciler{
 		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&ClusterACMEHubConsumerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                   mgr.GetClient(),
+		ClusterResourceNamespace: "acmehub-system",
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 

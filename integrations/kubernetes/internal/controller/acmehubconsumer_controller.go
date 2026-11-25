@@ -2,22 +2,24 @@ package controller
 
 import (
 	"context"
+	"errors"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	acmev1alpha1 "github.com/geektr-cloud/acme-hub/integrations/kubernetes/api/v1alpha1"
+	"github.com/geektr-cloud/acme-hub/integrations/kubernetes/internal/acmehub"
 )
 
 // ACMEHubConsumerReconciler reconciles an ACMEHubConsumer object.
 type ACMEHubConsumerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
 }
 
 // +kubebuilder:rbac:groups=acme.geektr.cloud,resources=acmehubconsumers,verbs=get;list;watch;create;update;patch;delete
@@ -32,32 +34,28 @@ func (r *ACMEHubConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	logger.Info("reconciling ACMEHubConsumer", "name", consumer.Name)
+	logger.V(1).Info("reconciling ACMEHubConsumer", "name", consumer.Name)
 
 	ready := true
 	reason := "Valid"
 	message := "Consumer is valid"
 
-	if consumer.Spec.Endpoint == "" {
+	if _, err := acmehub.ParseEndpoint(consumer.Spec.Endpoint); err != nil {
 		ready = false
 		reason = "InvalidEndpoint"
-		message = "Endpoint is empty"
+		message = err.Error()
 	}
 
 	if ready {
-		secret := &corev1.Secret{}
-		secretKey := types.NamespacedName{
-			Namespace: consumer.Namespace,
-			Name:      consumer.Spec.SecretRef.Name,
-		}
-		if err := r.Get(ctx, secretKey, secret); err != nil {
+		if _, err := loadConsumerToken(ctx, r.Client, consumer.Namespace, consumer.Spec.SecretRef.Name); err != nil {
 			ready = false
 			reason = "SecretNotFound"
-			message = "Token secret not found: " + err.Error()
-		} else if _, ok := secret.Data["token"]; !ok {
-			ready = false
-			reason = "SecretNotFound"
-			message = "Token secret missing 'token' key"
+			if errors.Is(err, errEmptyToken) {
+				reason = "InvalidSecret"
+			} else if !apierrors.IsNotFound(err) {
+				reason = "SecretError"
+			}
+			message = err.Error()
 		}
 	}
 
@@ -66,11 +64,16 @@ func (r *ACMEHubConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		status = metav1.ConditionTrue
 	}
 
-	setCondition(&consumer.Status.Conditions, "Ready", status, reason, message)
-	consumer.Status.ObservedGeneration = consumer.Generation
+	statusChanged := setCondition(&consumer.Status.Conditions, "Ready", status, reason, message)
+	if consumer.Status.ObservedGeneration != consumer.Generation {
+		consumer.Status.ObservedGeneration = consumer.Generation
+		statusChanged = true
+	}
 
-	if err := r.Status().Update(ctx, consumer); err != nil {
-		return ctrl.Result{}, err
+	if statusChanged {
+		if err := r.Status().Update(ctx, consumer); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -79,6 +82,39 @@ func (r *ACMEHubConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *ACMEHubConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&acmev1alpha1.ACMEHubConsumer{}).
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapSecretToConsumer),
+		).
 		Named("acmehubconsumer").
 		Complete(r)
+}
+
+func (r *ACMEHubConsumerReconciler) mapSecretToConsumer(
+	ctx context.Context,
+	obj client.Object,
+) []reconcile.Request {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		return nil
+	}
+
+	var consumers acmev1alpha1.ACMEHubConsumerList
+	if err := r.List(
+		ctx,
+		&consumers,
+		client.InNamespace(secret.Namespace),
+		client.MatchingFields{consumerSecretRefIndex: secret.Namespace + "/" + secret.Name},
+	); err != nil {
+		log.FromContext(ctx).Error(err, "list ACMEHubConsumers for secret", "secret", secret.Namespace+"/"+secret.Name)
+		return nil
+	}
+
+	requests := make([]reconcile.Request, 0, len(consumers.Items))
+	for i := range consumers.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: client.ObjectKeyFromObject(&consumers.Items[i]),
+		})
+	}
+	return requests
 }

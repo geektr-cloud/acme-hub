@@ -56,7 +56,11 @@ func NewClient() *Client {
 // transport is used, preserving the process-wide HTTPS_PROXY/NO_PROXY behavior.
 // When proxy is set, only this client is forced through it.
 func NewClientWithProxy(proxy *url.URL) *Client {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		base = &http.Transport{}
+	}
+	transport := base.Clone()
 	if proxy != nil {
 		transport.Proxy = http.ProxyURL(proxy)
 	}
@@ -98,7 +102,11 @@ func (c *Client) Issue(ctx context.Context, endpoint, token string, domains []st
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	url := strings.TrimRight(endpoint, "/") + issuePath
+	base, err := ParseEndpoint(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	url := strings.TrimRight(base.String(), "/") + issuePath
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
@@ -110,10 +118,15 @@ func (c *Client) Issue(ctx context.Context, endpoint, token string, domains []st
 	if err != nil {
 		return nil, fmt.Errorf("http request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("read error response: %w", err)
+		}
 		var issueErr IssueError
 		if json.Unmarshal(respBody, &issueErr) == nil && issueErr.Status != 0 {
 			return nil, &issueErr
@@ -124,6 +137,9 @@ func (c *Client) Issue(ctx context.Context, endpoint, token string, domains []st
 	var result IssueResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	if err := validateIssueResponse(domains, &result); err != nil {
+		return nil, err
 	}
 
 	return &result, nil

@@ -1,0 +1,9 @@
+.git
+bin/
+charts/
+config/
+hack/
+cover.out
+*.test
+*.out
+README.md

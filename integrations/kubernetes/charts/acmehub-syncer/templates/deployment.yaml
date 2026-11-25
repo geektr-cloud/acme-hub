@@ -26,6 +26,8 @@ spec:
           args:
             - --leader-elect
             - --cluster-resource-namespace={{ include "acmehub-syncer.namespace" . }}
+            - --max-concurrent-reconciles={{ .Values.maxConcurrentReconciles }}
+            - --issue-timeout={{ .Values.issueTimeout }}
           {{- with .Values.acmeHubProxy }}
           env:
             - name: ACME_HUB_PROXY

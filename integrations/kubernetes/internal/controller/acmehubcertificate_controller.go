@@ -2,11 +2,13 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -33,6 +36,8 @@ type ACMEHubCertificateReconciler struct {
 	Recorder                 record.EventRecorder
 	ClusterResourceNamespace string
 	AcmeHubProxy             *url.URL
+	IssueTimeout             time.Duration
+	MaxConcurrentReconciles  int
 
 	acmeClient *acmehub.Client
 }
@@ -40,7 +45,7 @@ type ACMEHubCertificateReconciler struct {
 // +kubebuilder:rbac:groups=acme.geektr.cloud,resources=acmehubcertificates,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=acme.geektr.cloud,resources=acmehubcertificates/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=acme.geektr.cloud,resources=acmehubcertificates/finalizers,verbs=update
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -52,7 +57,8 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Handle deletion finalizer
+	// Handle deletion finalizer. Only delete Secrets this CR controls; a
+	// transient read error must not silently orphan the Secret.
 	if !cert.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(cert, finalizerName) {
 			secret := &corev1.Secret{}
@@ -60,7 +66,11 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 				Namespace: cert.Namespace,
 				Name:      cert.Spec.SecretName,
 			}
-			if err := r.Get(ctx, secretKey, secret); err == nil {
+			if err := r.Get(ctx, secretKey, secret); err != nil {
+				if !apierrors.IsNotFound(err) {
+					return ctrl.Result{}, fmt.Errorf("get secret: %w", err)
+				}
+			} else if metav1.IsControlledBy(secret, cert) {
 				if err := r.Delete(ctx, secret); err != nil {
 					return ctrl.Result{}, fmt.Errorf("delete secret: %w", err)
 				}
@@ -84,11 +94,12 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// Resolve consumer
 	endpoint, token, err := r.resolveConsumer(ctx, cert)
 	if err != nil {
-		logger.Error(err, "failed to resolve consumer")
-		setCondition(&cert.Status.Conditions, "Ready", metav1.ConditionFalse, "ConsumerNotReady", err.Error())
-		r.Recorder.Event(cert, corev1.EventTypeWarning, "ConsumerNotReady", err.Error())
-		if err := r.Status().Update(ctx, cert); err != nil {
-			return ctrl.Result{}, err
+		changed, statusErr := r.updateFailureStatus(ctx, cert, "ConsumerNotReady", err.Error())
+		if changed {
+			r.Recorder.Event(cert, corev1.EventTypeWarning, "ConsumerNotReady", err.Error())
+		}
+		if statusErr != nil {
+			return ctrl.Result{}, errors.Join(err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
@@ -96,15 +107,16 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// Issue certificate
 	acmeClient := r.acmeClient
 	if acmeClient == nil {
-		acmeClient = acmehub.NewClientWithProxy(r.AcmeHubProxy)
+		acmeClient = r.newACMEClient()
 	}
 	issueResp, err := acmeClient.Issue(ctx, endpoint, token, cert.Spec.Domains)
 	if err != nil {
-		logger.Error(err, "failed to issue certificate")
-		setCondition(&cert.Status.Conditions, "Ready", metav1.ConditionFalse, "IssueFailed", err.Error())
-		r.Recorder.Event(cert, corev1.EventTypeWarning, "IssueFailed", err.Error())
-		if err := r.Status().Update(ctx, cert); err != nil {
-			return ctrl.Result{}, err
+		changed, statusErr := r.updateFailureStatus(ctx, cert, "IssueFailed", err.Error())
+		if changed {
+			r.Recorder.Event(cert, corev1.EventTypeWarning, "IssueFailed", err.Error())
+		}
+		if statusErr != nil {
+			return ctrl.Result{}, errors.Join(err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
@@ -123,20 +135,36 @@ func (r *ACMEHubCertificateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	result, err := controllerutil.CreateOrUpdate(ctx, r.Client, secret, func() error {
-		if string(secret.Data["tls.crt"]) == issueResp.Fullchain &&
-			string(secret.Data["tls.key"]) == issueResp.PrivateKey {
-			return nil
+		if secret.UID != "" {
+			if !isManagedSecret(secret, cert) {
+				return fmt.Errorf(
+					"secret %s/%s already exists and is not managed by acmehub-syncer; add annotation %s=true to adopt it",
+					secret.Namespace, secret.Name, managedSecretAnnotation,
+				)
+			}
+			if secret.Type != corev1.SecretTypeTLS {
+				return fmt.Errorf(
+					"secret %s/%s has type %q, want %q",
+					secret.Namespace, secret.Name, secret.Type, corev1.SecretTypeTLS,
+				)
+			}
 		}
 
+		markManagedSecret(secret)
 		secret.Type = corev1.SecretTypeTLS
-		secret.Data = desiredData
+		if string(secret.Data["tls.crt"]) != issueResp.Fullchain ||
+			string(secret.Data["tls.key"]) != issueResp.PrivateKey {
+			secret.Data = desiredData
+		}
 		return ctrl.SetControllerReference(cert, secret, r.Scheme)
 	})
 	if err != nil {
-		setCondition(&cert.Status.Conditions, "Ready", metav1.ConditionFalse, "SecretWriteError", err.Error())
-		r.Recorder.Event(cert, corev1.EventTypeWarning, "SecretWriteError", err.Error())
-		if err := r.Status().Update(ctx, cert); err != nil {
-			return ctrl.Result{}, err
+		changed, statusErr := r.updateFailureStatus(ctx, cert, "SecretWriteError", err.Error())
+		if changed {
+			r.Recorder.Event(cert, corev1.EventTypeWarning, "SecretWriteError", err.Error())
+		}
+		if statusErr != nil {
+			return ctrl.Result{}, errors.Join(err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
@@ -223,26 +251,57 @@ func (r *ACMEHubCertificateReconciler) resolveConsumer(ctx context.Context, cert
 		return "", "", fmt.Errorf("unknown consumer kind: %s", kind)
 	}
 
-	secret := &corev1.Secret{}
-	secretKey := types.NamespacedName{Namespace: tokenSecretNamespace, Name: tokenSecretName}
-	if err := r.Get(ctx, secretKey, secret); err != nil {
-		return "", "", fmt.Errorf("get token secret %s: %w", secretKey, err)
+	if _, err := acmehub.ParseEndpoint(endpoint); err != nil {
+		return "", "", fmt.Errorf("invalid endpoint: %w", err)
 	}
 
-	tokenBytes, ok := secret.Data["token"]
-	if !ok {
-		return "", "", fmt.Errorf("secret %s missing 'token' key", secretKey)
+	token, err = loadConsumerToken(ctx, r.Client, tokenSecretNamespace, tokenSecretName)
+	if err != nil {
+		return "", "", err
 	}
 
-	return endpoint, string(tokenBytes), nil
+	return endpoint, token, nil
+}
+
+func (r *ACMEHubCertificateReconciler) updateFailureStatus(
+	ctx context.Context,
+	cert *acmev1alpha1.ACMEHubCertificate,
+	reason, message string,
+) (bool, error) {
+	changed := setCondition(&cert.Status.Conditions, "Ready", metav1.ConditionFalse, reason, message)
+	if cert.Status.ObservedGeneration != cert.Generation {
+		cert.Status.ObservedGeneration = cert.Generation
+		changed = true
+	}
+	if !changed {
+		return false, nil
+	}
+	if err := r.Status().Update(ctx, cert); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *ACMEHubCertificateReconciler) newACMEClient() *acmehub.Client {
+	c := acmehub.NewClientWithProxy(r.AcmeHubProxy)
+	if r.IssueTimeout > 0 {
+		c.HTTPClient.Timeout = r.IssueTimeout
+	}
+	return c
 }
 
 func (r *ACMEHubCertificateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.acmeClient == nil {
-		r.acmeClient = acmehub.NewClientWithProxy(r.AcmeHubProxy)
+		r.acmeClient = r.newACMEClient()
 	}
+	maxConcurrent := r.MaxConcurrentReconciles
+	if maxConcurrent < 1 {
+		maxConcurrent = 1
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{
+			MaxConcurrentReconciles: maxConcurrent,
 			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
 				36*time.Second,
 				3*time.Hour,
@@ -250,6 +309,113 @@ func (r *ACMEHubCertificateReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		}).
 		For(&acmev1alpha1.ACMEHubCertificate{}).
 		Owns(&corev1.Secret{}).
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapSecretToCertificates),
+		).
+		Watches(
+			&acmev1alpha1.ACMEHubConsumer{},
+			handler.EnqueueRequestsFromMapFunc(r.mapConsumerToCertificates),
+		).
+		Watches(
+			&acmev1alpha1.ClusterACMEHubConsumer{},
+			handler.EnqueueRequestsFromMapFunc(r.mapConsumerToCertificates),
+		).
 		Named("acmehubcertificate").
 		Complete(r)
+}
+
+func (r *ACMEHubCertificateReconciler) mapSecretToCertificates(
+	ctx context.Context,
+	obj client.Object,
+) []reconcile.Request {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		return nil
+	}
+	for _, ref := range secret.OwnerReferences {
+		if ref.Kind == "ACMEHubCertificate" {
+			// Owns() already maps the managed TLS Secret.
+			return nil
+		}
+	}
+
+	logger := log.FromContext(ctx)
+	var requests []reconcile.Request
+
+	var consumers acmev1alpha1.ACMEHubConsumerList
+	if err := r.List(
+		ctx,
+		&consumers,
+		client.InNamespace(secret.Namespace),
+		client.MatchingFields{consumerSecretRefIndex: secret.Namespace + "/" + secret.Name},
+	); err != nil {
+		logger.Error(err, "list ACMEHubConsumers for secret", "secret", secret.Namespace+"/"+secret.Name)
+	} else {
+		for _, consumer := range consumers.Items {
+			requests = append(
+				requests,
+				r.enqueueCertificatesForConsumer(ctx, "ACMEHubConsumer", consumer.Namespace, consumer.Name)...,
+			)
+		}
+	}
+
+	if secret.Namespace == r.ClusterResourceNamespace {
+		var consumers acmev1alpha1.ClusterACMEHubConsumerList
+		if err := r.List(
+			ctx,
+			&consumers,
+			client.MatchingFields{clusterConsumerSecretRefIndex: secret.Name},
+		); err != nil {
+			logger.Error(err, "list ClusterACMEHubConsumers for secret", "secret", secret.Namespace+"/"+secret.Name)
+		} else {
+			for _, consumer := range consumers.Items {
+				requests = append(
+					requests,
+					r.enqueueCertificatesForConsumer(ctx, "ClusterACMEHubConsumer", "", consumer.Name)...,
+				)
+			}
+		}
+	}
+
+	return requests
+}
+
+func (r *ACMEHubCertificateReconciler) mapConsumerToCertificates(
+	ctx context.Context,
+	obj client.Object,
+) []reconcile.Request {
+	switch consumer := obj.(type) {
+	case *acmev1alpha1.ACMEHubConsumer:
+		return r.enqueueCertificatesForConsumer(ctx, "ACMEHubConsumer", consumer.Namespace, consumer.Name)
+	case *acmev1alpha1.ClusterACMEHubConsumer:
+		return r.enqueueCertificatesForConsumer(ctx, "ClusterACMEHubConsumer", "", consumer.Name)
+	default:
+		return nil
+	}
+}
+
+func (r *ACMEHubCertificateReconciler) enqueueCertificatesForConsumer(
+	ctx context.Context,
+	kind, namespace, name string,
+) []reconcile.Request {
+	var certs acmev1alpha1.ACMEHubCertificateList
+	opts := []client.ListOption{
+		client.MatchingFields{certConsumerRefIndex: certConsumerRefKey(kind, namespace, name)},
+	}
+	if kind != "ClusterACMEHubConsumer" {
+		opts = append(opts, client.InNamespace(namespace))
+	}
+	if err := r.List(ctx, &certs, opts...); err != nil {
+		log.FromContext(ctx).Error(err, "list ACMEHubCertificates for consumer", "kind", kind, "name", name)
+		return nil
+	}
+
+	requests := make([]reconcile.Request, 0, len(certs.Items))
+	for _, cert := range certs.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{Namespace: cert.Namespace, Name: cert.Name},
+		})
+	}
+	return requests
 }

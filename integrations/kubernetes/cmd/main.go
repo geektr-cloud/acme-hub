@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,12 +37,18 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var clusterResourceNamespace string
+	var maxConcurrentReconciles int
+	var issueTimeout time.Duration
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager, ensuring only one active controller manager.")
 	flag.StringVar(&clusterResourceNamespace, "cluster-resource-namespace", "acmehub-system",
 		"The namespace for ClusterACMEHubConsumer token Secrets.")
+	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 4,
+		"Maximum number of ACMEHubCertificate reconciles to run concurrently.")
+	flag.DurationVar(&issueTimeout, "issue-timeout", 180*time.Second,
+		"Timeout for a single acme-hub certificate issue request.")
 
 	opts := zap.Options{
 		Development: true,
@@ -51,6 +58,15 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	if maxConcurrentReconciles < 1 {
+		setupLog.Error(nil, "invalid --max-concurrent-reconciles", "value", maxConcurrentReconciles)
+		os.Exit(1)
+	}
+	if issueTimeout <= 0 {
+		setupLog.Error(nil, "invalid --issue-timeout", "value", issueTimeout)
+		os.Exit(1)
+	}
 
 	acmeHubProxy, err := acmehub.ParseProxy(os.Getenv("ACME_HUB_PROXY"))
 	if err != nil {
@@ -75,26 +91,33 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx := ctrl.SetupSignalHandler()
+	if err := controller.SetupIndexes(ctx, mgr); err != nil {
+		setupLog.Error(err, "unable to set up field indexes")
+		os.Exit(1)
+	}
+
 	if err = (&controller.ACMEHubCertificateReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		Recorder:                 mgr.GetEventRecorderFor("acmehubcertificate-controller"),
 		ClusterResourceNamespace: clusterResourceNamespace,
 		AcmeHubProxy:             acmeHubProxy,
+		IssueTimeout:             issueTimeout,
+		MaxConcurrentReconciles:  maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ACMEHubCertificate")
 		os.Exit(1)
 	}
 	if err = (&controller.ACMEHubConsumerReconciler{
 		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ACMEHubConsumer")
 		os.Exit(1)
 	}
 	if err = (&controller.ClusterACMEHubConsumerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                   mgr.GetClient(),
+		ClusterResourceNamespace: clusterResourceNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterACMEHubConsumer")
 		os.Exit(1)
@@ -110,7 +133,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
